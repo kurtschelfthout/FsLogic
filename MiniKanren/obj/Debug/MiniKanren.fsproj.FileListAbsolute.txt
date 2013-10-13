@@ -1,0 +1,9 @@
+c:\users\kurt\documents\visual studio 11\Projects\MiniKanren\MiniKanren\obj\Debug\MiniKanren.fsprojResolveAssemblyReference.cache
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\bin\Debug\MiniKanren.XML
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\bin\Debug\MiniKanren.pdb
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\bin\Debug\FSharp.Core.dll
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\bin\Debug\FSharp.Core.xml
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\obj\Debug\MiniKanren.fsprojResolveAssemblyReference.cache
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\obj\Debug\MiniKanren.pdb
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\bin\Debug\MiniKanren.exe
+C:\Users\Kurt\Projects\MiniKanren\MiniKanren\obj\Debug\MiniKanren.exe
