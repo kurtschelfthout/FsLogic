@@ -3,14 +3,13 @@
 open System
 open System.Collections
 open System.Collections.Generic
+open System.Threading
 
 let varcount = ref 0
 
 type Var(?name) = 
     let name = defaultArg name "anon"
-    let counter = 
-        varcount := !varcount + 1
-        !varcount - 1
+    let counter = Interlocked.Increment(varcount)
     override x.ToString() =
         sprintf "%s_%i" name counter
 
@@ -51,11 +50,6 @@ let rec walk (v:Term) (Subst s as ss) =
         match a with
         | Some (_,rhs) -> walk rhs ss
         | None -> v //if not a variable or not found, return v 
-    //this goes into walkmany?
-//    | List (v1,v2) -> 
-//        let v1r = walk v1 ss
-//        let v2r = walk v2 ss
-//        List (v1r,v2r)  
     | _ -> v         //this is the recursive base case
 
 ///Returns true if adding an association between x and v
@@ -193,10 +187,25 @@ let conde (goals:#seq<Goal<_> * #seq<Goal<_>>>) : Goal<_> =
     fun a -> 
         Inc (lazy (mplusMany (goals |> Seq.map (fun (g,gs) -> (bindMany (g a) gs)) |> Seq.toList) ))
 
-let exist x f =
+let exist f =
     fun a ->
-        Inc (lazy (let (g0::gs)  = f (x |> List.map Var)
+        Inc (lazy (let (g0::gs)  = f ()
                    bindMany (g0 a) gs))
+
+let (=>) g1 g2 = 
+    //let thenS g1 (g2:Lazy<_>) = fun a -> Inc (lazy (bind (g1 a) g2.Value))
+    let thenS g1 g2 = fun a -> Inc (lazy (bind (g1 a) g2))
+    thenS g1 g2
+
+let (.|) g1 g2 =
+    let orS g1 g2 = fun a -> Inc (lazy (mplus (g1 a) (g2 a)))
+    orS g1 g2
+
+let (.&) g1 g2 = 
+    let res = fun a -> bind (g1 a) g2
+    res
+
+let rec fix f x = fun a -> Inc (lazy (f (fix f) x a))
 
 let rec take n f =
     if n = 0 then 
@@ -211,8 +220,8 @@ let rec take n f =
 let run n f =
     //let's hack this in
     Inc (lazy (let x = Var <| new Var() //"_goal_"
-               let (g0::gs)  = f x
-               bind (bindMany (g0 Subst.Empty) gs) (Unit << reify x)))
+               let g0  = f x
+               bind (g0 Subst.Empty) (Unit << reify x)))
     |> take n
 
 //this doesn't work because the x passed into the reify is not the real var - that is only
@@ -221,20 +230,29 @@ let run n f =
 //    let g = bind ((exist [x] (fun x -> f x)) Subst.Empty) (reify x >> Unit)
 //    take n g
 
+let newVar() = Var (new Var())
+
 //tests
-let bla = run 5 (fun myvar -> [exist [new Var()] (fun [x] -> [equiv x (Atom 3); equiv myvar x])])
+let bla = run 5 (fun myvar -> let x = newVar() in (equiv x (Atom 3)) .& (equiv myvar x))
 
-let g = run 5 (fun x -> [equiv x (Atom 1)])
+let g = run 5 (fun x -> equiv x (Atom 1))
 
-let g2 = run 5 (fun q -> [exist [new Var();new Var();new Var()] 
-                                (fun [x;y;z]-> [conde [equiv (Term.FromSeq [x; y; z; x]) q,[] 
-                                                       equiv (Term.FromSeq [z; y; x; z]) q,[]]])])
+let g2 = run 5 (fun q -> 
+            let (x,y,z) = newVar(),newVar(),newVar()
+            equiv (Term.FromSeq [x; y; z; x]) q
+            .| equiv (Term.FromSeq [z; y; x; z]) q)
 
-let g4 = run 5 (fun q -> [exist [new Var();new Var();new Var()] 
-                                (fun [x;y;z]-> [conde [(equiv (List (x, y)) q),[] 
-                                                       (equiv (List (y, y)) q),[]]])])
+let g3 = run 1(fun q-> 
+            let x,y = newVar(),newVar()
+            equiv y q
+            .& equiv (Atom 3) y)
 
-let g3 = run 1(fun q-> [exist [new Var(); new Var()] (fun [x;y] -> [equiv y q; equiv (Atom 3) y])])
+
+let g4 = run 5 (fun q -> 
+            let x,y,z = newVar(),newVar(),newVar()
+            equiv (List (x, y)) q
+            .| equiv (List (y, y)) q)
+
 
 let infinite = run 9 (fun q ->  
                 let rec loop() =
@@ -242,57 +260,57 @@ let infinite = run 9 (fun q ->
                         seq { yield equiv (Atom false) q,[]
                               yield equiv (Atom true) q, []
                               yield loop(),[] }
-                [loop()])
+                loop())
 
-///anyo tries g an unbounded number of times
+//anyo tries g an unbounded number of times
 let rec anyo g =
     conde <| seq { yield g,[]; yield anyo g,[] }
 
-let anyTest = run 5 (fun q -> [conde [anyo (equiv (Atom false) q),[]
-                                      equiv (Atom true) q,[]]])
+let anyTest = run 5 (fun q -> anyo (equiv (Atom false) q)
+                              .| equiv (Atom true) q)
 
 let anyTest2 =  
     run 5 (fun q -> 
-        [anyo (conde [equiv (Atom 1) q,[]
-                      equiv (Atom 2) q,[]
-                      equiv (Atom 3) q,[]])])
-                
+        anyo (equiv (Atom 1) q
+              .| equiv (Atom 2) q
+              .| equiv (Atom 3) q))
+
 let alwayso = anyo (equiv Nil Nil)
 
 let alwaysoTest =
     run 15 (fun x ->
-        [conde [equiv (Atom true) x,[]; equiv (Atom false) x,[]]
-         alwayso
-         equiv (Atom false) x])
+        (equiv (Atom true) x .| equiv (Atom false) x)
+        .& alwayso
+        .& equiv (Atom false) x)
 
 let alwaysoTest2 =
     run 3 (fun q ->
         let nevero = anyo (equiv (Atom true) (Atom false))
-        [conde [equiv (Atom 1) q,[]
-                nevero,[]
-                conde [equiv (Atom 2) q,[]
-                       nevero,[]
-                       equiv (Atom 3) q,[]],[]]]) 
+        equiv (Atom 1) q
+        .| nevero
+        .| (equiv (Atom 2) q
+            .| nevero
+            .| equiv (Atom 3) q)) 
 
-let rec appendo(l:Term) (s:Term) (out:Term) =
-    //printfn "%O %O %O" l s out
-    //Console.ReadKey()
-    conde [equiv Nil l,[equiv s out]
-           exist [new Var("a");new Var("d")] (fun [a; d] ->
-            [equiv (List (a,d)) l
-             exist [new Var("res")] (fun [res] -> 
-                [appendo d s res
-                 equiv (List (a,res)) out])]),[]
-           ]
-            
+
+let appendo l s out = 
+    let appendoF appendo (l:Term,s:Term,out:Term) =
+        equiv Nil l => equiv s out
+        .| (let a,d = newVar(),newVar()
+            equiv (List (a,d)) l
+            .& (let res = newVar() 
+                appendo (d,s,res) //causes stackoverflow without fix
+                .& equiv (List (a,res)) out))
+    fix appendoF (l,s,out)
+
 let appendoTest =
-    run 1 (fun q -> [appendo q (List (Atom 5, List(Atom 4,Nil))) (List (Atom 3, List (Atom 5, List(Atom 4, Nil)))) ])
+    run 1 (fun q -> appendo q (List (Atom 5, List(Atom 4,Nil))) (List (Atom 3, List (Atom 5, List(Atom 4, Nil)))))
 
 let appendoTest2 =
-    run 3 (fun q -> [exist [new Var("l"); new Var("s")] (fun [l;s] -> 
-        [appendo l s (List (Atom 1, List(Atom 2,Nil)))
-         equiv (List (l,s)) q])])
-
+    run 3 (fun q -> 
+        let l,s = newVar(),newVar()
+        appendo l s (List (Atom 1, List(Atom 2,Nil)))
+        .& equiv (List (l,s)) q)
 
 [<EntryPoint>]
 let main args =
@@ -308,7 +326,5 @@ let main args =
     printfn "%O" alwaysoTest2
     printfn "%A" appendoTest
     printfn "%A" appendoTest2
-    //let r = anyTest2()
-    //printfn "%A" r
-    Console.ReadKey() |> ignore
+    //Console.ReadKey() |> ignore
     0

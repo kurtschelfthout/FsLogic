@@ -98,10 +98,23 @@
 <member name="">
 
 </member>
-<member name="M:MiniKanren.anyo(Microsoft.FSharp.Core.FSharpFunc{MiniKanren.Subst,MiniKanren.Stream{MiniKanren.Subst}})">
-<summary>
-anyo tries g an unbounded number of times
-</summary>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
+</member>
+<member name="">
+
 </member>
 <member name="">
 
