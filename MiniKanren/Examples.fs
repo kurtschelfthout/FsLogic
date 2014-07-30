@@ -1,11 +1,11 @@
-﻿// Learn more about F# at http://fsharp.net. See the 'F# Tutorial' project
-// for more guidance on F# programming.
+﻿#if INTERACTIVE
+#load "Util.fs" "Substitution.fs" "Goal.fs"
+#else
+module Examples
+#endif
 
-#load "Util.fs"
-#load "Substitution.fs"
-#load "Goal.fs"
-
-open MiniKanren
+open MiniKanren.Goal
+open MiniKanren.Substitution
 
 //tests
 let bla = run 5 (fun myvar -> let x = newVar() in (equiv x (Atom 3)) .& (equiv myvar x))
