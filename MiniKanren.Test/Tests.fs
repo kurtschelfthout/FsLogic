@@ -99,11 +99,12 @@ let appendoTest2() =
         .& equiv (List (l,s)) q)
     Assert.Equal(3, res.Length)
 
-let (|Int|) (x:obj) = x :?> int32
-
-let projectTest = 
-    run 5 (fun q -> 
+[<Fact>]
+let projectTest() = 
+    let (|Int|) (x:obj) = x :?> int32
+    let res = run 5 (fun q -> 
         let x = newVar()
         equiv (Atom 5) x
         .& (project x (fun (Int xv) -> equiv (Atom (xv*xv)) q)))
+    Assert.Equal<_ list>([Atom 25], res)
 
