@@ -1,7 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "MiniKanren", "MiniKanren\MiniKanren.fsproj", "44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F"
+# Visual Studio Express 2013 for Windows Desktop
+VisualStudioVersion = 12.0.30723.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MiniKanren", "MiniKanren\MiniKanren.fsproj", "{44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MiniKanren.Test", "MiniKanren.Test\MiniKanren.Test.fsproj", "{A1242E49-AC9D-4EDA-BC09-C27BDE3B4BD8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{7F9B4480-8C03-4101-BD3A-F0E80E8E23BC}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\packages.config = .nuget\packages.config
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,11 +22,15 @@ Global
 		{44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = MiniKanren\MiniKanren.fsproj
+		{A1242E49-AC9D-4EDA-BC09-C27BDE3B4BD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1242E49-AC9D-4EDA-BC09-C27BDE3B4BD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1242E49-AC9D-4EDA-BC09-C27BDE3B4BD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1242E49-AC9D-4EDA-BC09-C27BDE3B4BD8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = MiniKanren\MiniKanren.fsproj
 	EndGlobalSection
 EndGlobal

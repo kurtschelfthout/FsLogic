@@ -5,22 +5,21 @@ open System.Collections
 open System.Collections.Generic
 open System.Threading
 
-let varcount = ref 0
-
-type Var(?name) = 
-    let name = defaultArg name "anon"
+type Var() = 
+    static let varcount = ref 0
     let counter = Interlocked.Increment(varcount)
-    override x.ToString() =
-        sprintf "%s_%i" name counter
+    override __.ToString() =
+        sprintf "var_%i" counter
+    //can use reference equality and hashcode
 
 type Term = 
-    | Nil //just used in List...?
+    | Nil //just used in List
     | Var of Var
     | Atom of obj
     | List of Term * Term
     with
     static member FromSeq(terms:seq<Term>) =
-        terms |> Seq.fold (uncurry List) Nil
+        terms |> Seq.fold (curry List) Nil
     static member FromSeq(terms:seq<obj>) =
         terms |> Seq.fold (fun s e -> List(s, Atom e)) Nil
     override this.ToString() =
@@ -48,13 +47,13 @@ let rec walk (v:Term) (Subst s as ss) =
         match a with
         | Some (_,rhs) -> walk rhs ss
         | None -> v //if not a variable or not found, return v 
-    | _ -> v         //this is the recursive base case
+    | _ -> v
 
 ///Returns true if adding an association between x and v
 ///would introduce a circularity.
 ///A circularity would in the first instance cause walk to diverge
 ///(loop infinitely)
-and occurs (x:Var) v s =
+let rec occurs (x:Var) v s =
     let vs = walk v s
     match vs with
     | Var v' -> v'.Equals(x)
@@ -99,11 +98,10 @@ let rec unifyNoCheck u v s =
         |> Option.bind (unifyNoCheck u2 v2)
     | _ -> None
 
-///Like walk, but also looks into sequences
+///Like walk, but also looks into Lists.
 let rec walkMany v s =
     let v = walk v s
     match v with
-    //| Var _ -> v
     | List (v1,v2) -> List (walkMany v1 s,walkMany v2 s)
     | _ -> v
              
@@ -121,7 +119,7 @@ let rec reifyS v s =
     | _ -> s
     
 ///Remove al vars from a value given a substitution, if they are unassociated
-/// string like _0, _1 are shown
+///strings like _0, _1 are shown
 ///Note: in a typed setting, this would not return a Subs type, I think, but
 ///a reified Subst type which looks very similar, but has no Var case.
 let reify v s =

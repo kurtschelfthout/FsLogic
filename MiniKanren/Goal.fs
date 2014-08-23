@@ -3,15 +3,15 @@ module MiniKanren.Goal
 open MiniKanren.Substitution
 open System
 
+//a good explantion of the need for all these cases is in the uKanren paper.
 type Stream<'a> =
     | MZero
     | Unit of 'a
     | Choice of 'a * Stream<'a>
     | Inc of Lazy<Stream<'a>>
 
-
-//note: minikanren says: A goal is a function maps a substitution to an
-//ordered sequence of zero or more values. These are _almost always_ substituions.
+//A goal is a function that maps a substitution to an
+//ordered sequence of zero or more values. These are _almost always_ substitutions.
 type Goal<'a> = Subst -> Stream<'a>
 
 let equiv u v : Goal<_> =
@@ -51,7 +51,7 @@ let rec bindMany str goals =
     | [] -> str
     | (g::gs) -> bindMany (bind str g) gs
 
-let conde (goals:#seq<Goal<_> * #seq<Goal<_>>>) : Goal<_> =
+let conde (goals:#seq<Goal<_> * list<Goal<_>>>) : Goal<_> =
     fun a -> 
         Inc (lazy (mplusMany (goals |> Seq.map (fun (g,gs) -> (bindMany (g a) gs)) |> Seq.toList) ))
 
@@ -61,17 +61,13 @@ let exist f =
                    bindMany (g0 a) gs))
 
 let (=>) g1 g2 = 
-    //let thenS g1 (g2:Lazy<_>) = fun a -> Inc (lazy (bind (g1 a) g2.Value))
-    let thenS g1 g2 = fun a -> Inc (lazy (bind (g1 a) g2))
-    thenS g1 g2
+    fun a -> Inc (lazy (bind (g1 a) g2))
 
 let (.|) g1 g2 =
-    let orS g1 g2 = fun a -> Inc (lazy (mplus (g1 a) (g2 a)))
-    orS g1 g2
+    fun a -> Inc (lazy (mplus (g1 a) (g2 a)))
 
 let (.&) g1 g2 = 
-    let res = fun a -> bind (g1 a) g2
-    res
+    fun a -> bind (g1 a) g2
 
 let rec fix f x = fun a -> Inc (lazy (f (fix f) x a))
 
