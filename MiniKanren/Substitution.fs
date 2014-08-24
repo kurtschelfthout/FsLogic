@@ -5,7 +5,7 @@ open System.Collections
 open System.Collections.Generic
 open System.Threading
 
-type Var() = 
+type Id() = 
     static let varcount = ref 0
     let counter = Interlocked.Increment(varcount)
     override __.ToString() =
@@ -14,7 +14,7 @@ type Var() =
 
 type Term = 
     | Nil //just used in List
-    | Var of Var
+    | Var of Id
     | Atom of obj
     | List of Term * Term
     with
@@ -30,7 +30,7 @@ type Term =
         | List (u1,u2) -> sprintf "%O, %O" u1 u2
         
 
-type Subst = Subst of list<Var*Term> with
+type Subst = Subst of list<Id*Term> with
     member s.Length =
         match s with (Subst l) -> l.Length
     static member Empty = Subst []
@@ -53,7 +53,7 @@ let rec walk (v:Term) (Subst s as ss) =
 ///would introduce a circularity.
 ///A circularity would in the first instance cause walk to diverge
 ///(loop infinitely)
-let rec occurs (x:Var) v s =
+let rec occurs (x:Id) v s =
     let vs = walk v s
     match vs with
     | Var v' -> v'.Equals(x)

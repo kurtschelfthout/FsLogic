@@ -12,15 +12,15 @@ type Stream<'a> =
 
 //A goal is a function that maps a substitution to an
 //ordered sequence of zero or more values. These are _almost always_ substitutions.
-type Goal<'a> = Subst -> Stream<'a>
+type Goal = Subst -> Stream<Subst>
 
-let equiv u v : Goal<_> =
+let equiv u v : Goal =
     fun a -> 
         unify u v a
         |> Option.map Unit
         |> Option.defaultTo MZero
 
-let equivNoCheck u v : Goal<_> =
+let equivNoCheck u v : Goal =
     fun a -> 
         unifyNoCheck u v a
         |> Option.map Unit
@@ -51,23 +51,21 @@ let rec bindMany str goals =
     | [] -> str
     | (g::gs) -> bindMany (bind str g) gs
 
-let conde (goals:#seq<Goal<_> * list<Goal<_>>>) : Goal<_> =
+let conde (goals:#seq<Goal * list<Goal>>) : Goal =
     fun a -> 
         Inc (lazy (mplusMany (goals |> Seq.map (fun (g,gs) -> (bindMany (g a) gs)) |> Seq.toList) ))
 
-let exist f =
-    fun a ->
-        Inc (lazy (let (g0::gs)  = f ()
-                   bindMany (g0 a) gs))
+//let (=>) g1 g2 = 
+//    fun a -> bind (g1 a) g2
 
-let (=>) g1 g2 = 
-    fun a -> Inc (lazy (bind (g1 a) g2))
+let (|||) g1 g2 =
+    fun a -> mplus (g1 a) (g2 a)
 
-let (.|) g1 g2 =
-    fun a -> Inc (lazy (mplus (g1 a) (g2 a)))
-
-let (.&) g1 g2 = 
+let (&&&) g1 g2 = 
     fun a -> bind (g1 a) g2
+
+let recurse fg =
+    fun a -> Inc (lazy fg() a)
 
 let rec fix f x = fun a -> Inc (lazy (f (fix f) x a))
 
@@ -83,7 +81,7 @@ let rec take n f =
 
 let run n f =
     //let's hack this in
-    Inc (lazy (let x = Var <| new Var() //"_goal_"
+    Inc (lazy (let x = Var <| new Id() 
                let g0  = f x
                bind (g0 Subst.Empty) (Unit << reify x)))
     |> take n
@@ -94,14 +92,19 @@ let run n f =
 //    let g = bind ((exist [x] (fun x -> f x)) Subst.Empty) (reify x >> Unit)
 //    take n g
 
-let newVar() = Var (new Var())
+let fresh() = Var (new Id())
 
 //impure operators
-let project (v:Term) (f:obj -> Goal<_>) : Goal<_> =
+let project (v:Term) (f:obj -> Goal) : Goal =
     fun s -> 
-        printfn "s=%A" s
         //assume atom here..otherwise fail
         let (Atom x) = walkMany v s
-        printfn "x=%A" x
         f x s
 
+//type G =
+//    static member inline Eq(t1:Term, t2:Term) = equiv t1 t2
+//    static member inline Eq(t1:Term, t2:'a) = equiv t1 (Atom t2)
+//    static member inline Eq(t1:'a, t2:Term) = equiv (Atom t1) t2
+//    static member inline Eq(t1:'a, t2:'b) = equiv (Atom t1) (Atom t2)
+//    static member Eq(t1:Term, t2:seq<'a>) = equiv t1 (Atom t2)
+//    static member Eq(t1:seq<'a>, t2:Term) = equiv (Atom t1) t2

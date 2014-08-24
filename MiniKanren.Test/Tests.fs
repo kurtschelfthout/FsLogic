@@ -8,7 +8,11 @@ open Xunit
 
 [<Fact>]
 let g0() = 
-    let res = run 5 (fun q -> let x = newVar() in (equiv x (Atom 3)) .& (equiv q x))
+    let goal q = 
+        let x = fresh() 
+        equiv x (Atom 3)
+        &&& equiv q x
+    let res = run 5 goal
     Assert.Equal<_ list>([Atom 3], res)
 
 [<Fact>]
@@ -20,26 +24,26 @@ let g1() =
 let g2() = 
     let res = 
         run 5 (fun q -> 
-            let (x,y,z) = newVar(),newVar(),newVar()
+            let (x,y,z) = fresh(),fresh(),fresh()
             equiv (Term.FromSeq [x; y; z; x]) q
-            .| equiv (Term.FromSeq [z; y; x; z]) q)
+            ||| equiv (Term.FromSeq [z; y; x; z]) q)
     Assert.Equal(2, res.Length)
 
 [<Fact>]
 let g3() = 
     let res = 
         run 1 (fun q -> 
-            let x,y = newVar(),newVar()
-            equiv y q .& equiv (Atom 3) y)
+            let x,y = fresh(),fresh()
+            equiv y q &&& equiv (Atom 3) y)
     Assert.Equal<_ list>([Atom 3], res)
 
 [<Fact>]
 let g4() = 
     let res = 
         run 5 (fun q -> 
-            let x,y,z = newVar(),newVar(),newVar()
+            let x,y,z = fresh(),fresh(),fresh()
             equiv (List (x, y)) q
-            .| equiv (List (y, y)) q)
+            ||| equiv (List (y, y)) q)
     Assert.Equal(2, res.Length)
 
 [<Fact>]
@@ -56,7 +60,7 @@ let infinite() =
 
 [<Fact>]
 let anyoTest() = 
-    let res = run 5 (fun q -> anyo (equiv (Atom false) q) .| 
+    let res = run 5 (fun q -> anyo (equiv (Atom false) q) ||| 
                                     equiv (Atom true) q)
     Assert.Equal<_ list>([Atom true;Atom false;Atom false;Atom false;Atom false], res)
 
@@ -64,27 +68,27 @@ let anyoTest() =
 let anyoTest2() =  
     let res = run 5 (fun q -> 
         anyo (equiv (Atom 1) q
-              .| equiv (Atom 2) q
-              .| equiv (Atom 3) q))
-    Assert.Equal<_ list>([Atom 3;Atom 1;Atom 2;Atom 3;Atom 1], res)
+              ||| equiv (Atom 2) q
+              ||| equiv (Atom 3) q))
+    Assert.Equal<_ list>([Atom 1;Atom 3;Atom 1;Atom 2;Atom 3], res)
 
 [<Fact>]
 let alwaysoTest() =
     let res = run 5 (fun x ->
-        (equiv (Atom true) x .| equiv (Atom false) x)
-        .& alwayso
-        .& equiv (Atom false) x)
+        (equiv (Atom true) x ||| equiv (Atom false) x)
+        &&& alwayso
+        &&& equiv (Atom false) x)
     Assert.Equal<_ list>([Atom false;Atom false;Atom false;Atom false;Atom false], res)
 
 [<Fact>]
-let alwaysoTest2() =
+let neveroTest() =
     let res = run 3 (fun q -> //more than 3 will diverge...
         equiv (Atom 1) q
-        .| nevero
-        .| (equiv (Atom 2) q
-            .| nevero
-            .| equiv (Atom 3) q)) 
-    Assert.Equal<_ list>([Atom 1; Atom 3; Atom 2], res)
+        ||| nevero
+        ||| (equiv (Atom 2) q
+        ||| nevero
+        ||| equiv (Atom 3) q)) 
+    Assert.Equal<_ list>([Atom 1; Atom 2; Atom 3], res)
 
 [<Fact>]
 let appendoTest() =
@@ -94,17 +98,17 @@ let appendoTest() =
 [<Fact>]
 let appendoTest2() =
     let res = run 3 (fun q -> 
-        let l,s = newVar(),newVar()
+        let l,s = fresh(),fresh()
         appendo l s (List (Atom 1, List(Atom 2,Nil)))
-        .& equiv (List (l,s)) q)
+        &&& equiv (List (l,s)) q)
     Assert.Equal(3, res.Length)
 
 [<Fact>]
 let projectTest() = 
     let (|Int|) (x:obj) = x :?> int32
     let res = run 5 (fun q -> 
-        let x = newVar()
+        let x = fresh()
         equiv (Atom 5) x
-        .& (project x (fun (Int xv) -> equiv (Atom (xv*xv)) q)))
+        &&& (project x (fun (Int xv) -> equiv (Atom (xv*xv)) q)))
     Assert.Equal<_ list>([Atom 25], res)
 
