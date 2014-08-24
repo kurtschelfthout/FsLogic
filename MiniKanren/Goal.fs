@@ -14,7 +14,7 @@ type Stream<'a> =
 //ordered sequence of zero or more values. These are _almost always_ substitutions.
 type Goal = Subst -> Stream<Subst>
 
-let equiv u v : Goal =
+let equiv (u:'a) (v:'a) : Goal =
     fun a -> 
         unify u v a
         |> Option.map Unit
@@ -64,7 +64,7 @@ let (|||) g1 g2 =
 let (&&&) g1 g2 = 
     fun a -> bind (g1 a) g2
 
-let recurse fg =
+let inline recurse fg =
     fun a -> Inc (lazy fg() a)
 
 let rec fix f x = fun a -> Inc (lazy (f (fix f) x a))
@@ -79,11 +79,11 @@ let rec take n f =
         | Unit a -> [a]
         | Choice(a,f) ->  a :: take (n-1) f
 
-let run n f =
+let inline run n (f: _ -> Goal) =
     //let's hack this in
-    Inc (lazy (let x = Var <| new Id() 
+    Inc (lazy (let x = fresh()
                let g0  = f x
-               bind (g0 Subst.Empty) (Unit << reify x)))
+               bind (g0 Subst.Empty) (fun res -> walk x res |> Unit)(*(Unit << reify x)*)))
     |> take n
 
 //this doesn't work because the x passed into the reify is not the real var - that is only
@@ -92,14 +92,14 @@ let run n f =
 //    let g = bind ((exist [x] (fun x -> f x)) Subst.Empty) (reify x >> Unit)
 //    take n g
 
-let fresh() = Var (new Id())
-
-//impure operators
-let project (v:Term) (f:obj -> Goal) : Goal =
-    fun s -> 
-        //assume atom here..otherwise fail
-        let (Atom x) = walkMany v s
-        f x s
+//let fresh() = Var (new Id())
+//
+////impure operators
+//let project (v:Term) (f:obj -> Goal) : Goal =
+//    fun s -> 
+//        //assume atom here..otherwise fail
+//        let (Atom x) = walkMany v s
+//        f x s
 
 //type G =
 //    static member inline Eq(t1:Term, t2:Term) = equiv t1 t2
