@@ -83,7 +83,7 @@ let inline run n (f: _ -> Goal) =
     //let's hack this in
     Inc (lazy (let x = fresh()
                let g0  = f x
-               bind (g0 Subst.Empty) (fun res -> walk x res |> Unit)(*(Unit << reify x)*)))
+               bind (g0 Subst.Empty) (fun res -> walkMany x res |> Unit)(*(Unit << reify x)*)))
     |> take n
 
 //this doesn't work because the x passed into the reify is not the real var - that is only
@@ -100,11 +100,3 @@ let inline run n (f: _ -> Goal) =
 //        //assume atom here..otherwise fail
 //        let (Atom x) = walkMany v s
 //        f x s
-
-//type G =
-//    static member inline Eq(t1:Term, t2:Term) = equiv t1 t2
-//    static member inline Eq(t1:Term, t2:'a) = equiv t1 (Atom t2)
-//    static member inline Eq(t1:'a, t2:Term) = equiv (Atom t1) t2
-//    static member inline Eq(t1:'a, t2:'b) = equiv (Atom t1) (Atom t2)
-//    static member Eq(t1:Term, t2:seq<'a>) = equiv t1 (Atom t2)
-//    static member Eq(t1:seq<'a>, t2:Term) = equiv (Atom t1) t2
