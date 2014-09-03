@@ -106,12 +106,11 @@ let appendoTest2() =
         &&& equiv (Cons (l,Cons(s,Nil))) q)
     Assert.Equal(3, res.Length)
 
-//[<Fact>]
-//let projectTest() = 
-//    let (|Int|) (x:obj) = x :?> int32
-//    let res = run 5 (fun q -> 
-//        let x = fresh()
-//        equiv (Atom 5) x
-//        &&& (project x (fun (Int xv) -> equiv (Atom (xv*xv)) q)))
-//    Assert.Equal<_ list>([Atom 25], res)
+[<Fact>]
+let projectTest() = 
+    let res = run 5 (fun q -> 
+        let x = fresh()
+        equiv (Atom 5) x
+        &&& (project x (fun (Atom xv) -> equiv (Atom (xv*xv)) q)))
+    Assert.Equal<_ list>([Atom 25], res)
 

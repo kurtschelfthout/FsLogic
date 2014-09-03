@@ -94,9 +94,9 @@ let inline run n (f: _ -> Goal) =
 
 //let fresh() = Var (new Id())
 //
-////impure operators
-//let project (v:Term) (f:obj -> Goal) : Goal =
-//    fun s -> 
-//        //assume atom here..otherwise fail
-//        let (Atom x) = walkMany v s
-//        f x s
+//impure operators
+let project (v:'a) (f:'a -> Goal) : Goal =
+    fun s -> 
+        //assume atom here..otherwise fail
+        let x = walkMany v s
+        f x s
