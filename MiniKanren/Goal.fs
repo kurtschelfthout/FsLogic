@@ -20,11 +20,11 @@ let equiv (u:'a) (v:'a) : Goal =
         |> Option.map Unit
         |> Option.defaultTo MZero
 
-let equivNoCheck u v : Goal =
-    fun a -> 
-        unifyNoCheck u v a
-        |> Option.map Unit
-        |> Option.defaultTo MZero
+//let equivNoCheck u v : Goal =
+//    fun a -> 
+//        unifyNoCheck u v a
+//        |> Option.map Unit
+//        |> Option.defaultTo MZero
 
 let rec mplus a b =
     match a with
@@ -95,8 +95,8 @@ let inline run n (f: _ -> Goal) =
 //let fresh() = Var (new Id())
 //
 //impure operators
-let project (v:'a) (f:'a -> Goal) : Goal =
-    fun s -> 
-        //assume atom here..otherwise fail
-        let x = walkMany v s
-        f x s
+//let project (v:'a) (f:'a -> Goal) : Goal =
+//    fun s -> 
+//        //assume atom here..otherwise fail
+//        let x = walkMany v s
+//        f x s
