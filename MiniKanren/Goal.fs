@@ -20,6 +20,16 @@ let equiv (u:'a) (v:'a) : Goal =
         |> Option.map Unit
         |> Option.defaultTo MZero
 
+type Equiv = Equiv with
+    static member (?<-)(Equiv, l, v) = 
+        equiv l <@ v @>
+    static member (?<-)(Equiv, v, r) = 
+        equiv <@ v @> r
+    static member (?<-)(Equiv, l:Quotations.Expr<'a>,r:Quotations.Expr<'a>) =
+        equiv l r
+ 
+let inline (-=-) l r = Equiv ? (l) <- r
+
 //let equivNoCheck u v : Goal =
 //    fun a -> 
 //        unifyNoCheck u v a
@@ -85,6 +95,14 @@ let inline run n (f: _ -> Goal) =
                let g0  = f x
                bind (g0 Subst.Empty) (fun res -> walkMany x res |> Unit)(*(Unit << reify x)*)))
     |> take n
+
+let inline runEval n (f: _ -> Goal) =
+    //let's hack this in
+    Inc (lazy (let x = fresh()
+               let g0  = f x
+               bind (g0 Subst.Empty) (fun res -> walkMany x res |> Unit)(*(Unit << reify x)*)))
+    |> take n
+    |> List.map Swensen.Unquote.Operators.evalRaw
 
 //this doesn't work because the x passed into the reify is not the real var - that is only
 //given by exist. And we can't bind the reify inside the exist because then the types don't match.

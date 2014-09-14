@@ -16,7 +16,7 @@ let nevero = anyo (equiv <@ true @> <@ false @>)
 ///Relates l,s and out so that l @ s = out
 let rec appendo xs ys out = 
     recurse (fun () ->
-        equiv <@ [] @> xs &&& equiv ys out
+        [] -=- xs &&& equiv ys out
         ||| let x,xs',res = fresh(),fresh(),fresh() in
             equiv <@ %x::%xs' @> xs
             &&& appendo xs' ys res
