@@ -13,7 +13,7 @@ let g0() =
         let x = fresh() 
         x -=- 3 
         &&& equiv q x
-    let res = run 5 goal |> List.map Operators.evalRaw
+    let res = runEval 5 goal
     res =? [ 3 ]
 
 [<Fact>]
@@ -52,10 +52,9 @@ let g4() =
 let infinite() = 
     let res = runEval 7 (fun q ->  
                 let rec loop() =
-                    conde <|
-                        seq { yield false -=- q, []
-                              yield q -=- true, []
-                              yield loop(),[] }
+                    conde [ [ false -=- q ]
+                            [ q -=- true  ]
+                            [ recurse loop] ]
                 loop())
     res =? [ false; true; false; true; false; true; false]
 

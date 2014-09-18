@@ -61,9 +61,9 @@ let rec bindMany str goals =
     | [] -> str
     | (g::gs) -> bindMany (bind str g) gs
 
-let conde (goals:#seq<Goal * list<Goal>>) : Goal =
+let conde (goals:#seq<list<Goal>>) : Goal =
     fun a -> 
-        Inc (lazy (mplusMany (goals |> Seq.map (fun (g,gs) -> (bindMany (g a) gs)) |> Seq.toList) ))
+        Inc (lazy (mplusMany (goals |> Seq.map (fun (g::gs) -> bindMany (g a) gs) |> Seq.toList)))
 
 //let (=>) g1 g2 = 
 //    fun a -> bind (g1 a) g2
