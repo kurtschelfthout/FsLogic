@@ -6,37 +6,37 @@ open System.Collections.Generic
 open System.Threading
 open Microsoft.FSharp.Quotations
 
-type Id() = 
-    static let varcount = ref 0
-    let counter = Interlocked.Increment(varcount)
-    override __.ToString() = sprintf "_%i" counter
+let nextId = 
+    let varcount = ref 0
+    fun () -> Interlocked.Increment(varcount)
+        
     //can use reference equality and hashcode  
 
 type LVar<'a> = Expr<'a>
 
-let fresh<'a>() : LVar<'a> = Expr.Var (Var(Id().ToString(),typeof<'a>) ) |> Expr.Cast
+let fresh<'a>() : LVar<'a> = Expr.Var (Var(sprintf "_%i" (nextId()),typeof<'a>) ) |> Expr.Cast
 
-type Subst = Subst of list<int*Expr> with
-    member s.Length =
-        match s with (Subst l) -> l.Length
-    static member Empty = Subst []
+type Subst = Subst of Map<string,Expr> with
+//    member s.Length =
+//        match s with (Subst l) -> l.Length
+    static member Empty = Subst Map.empty
 
 let extNoCheck x v (Subst l) =
-    Subst ((x,v) :: l)
+    Subst (Map.add x v l)
 
 let (|LVar|_|) expr = 
     match expr with
     | Patterns.Var v ->
         //this is annoying - name can only be a string, so we need to convert to and from each time.
-        Some <| Int32.Parse(v.Name.Remove(0,1))
+        Some v.Name
     | _ -> None
 
-let rec walk (v:#Expr) (Subst s as ss)  =
+let rec walk v (Subst s as ss)  =
     match v with
     | LVar id -> 
-        let a = Seq.tryFind (fst >> (=) id) s
+        let a = Map.tryFind id s
         match a with
-        | Some (_,rhs) -> walk (rhs :?> 'a) ss
+        | Some rhs -> walk rhs ss
         | None -> v //if not a variable or not found, return v 
     | _ -> v
 
