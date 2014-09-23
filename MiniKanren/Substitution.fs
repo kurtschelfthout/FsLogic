@@ -6,38 +6,35 @@ open System.Collections.Generic
 open System.Threading
 open Microsoft.FSharp.Quotations
 
+///Set this to true to check after 
+///unifying whether adding any new substitutions
+///would introduce a circularity. This is
+///an expensive check so is turned off by
+///default.
+let mutable occursCheck = false
+
 let nextId = 
     let varcount = ref 0
-    fun () -> Interlocked.Increment(varcount)
-        
-    //can use reference equality and hashcode  
+    fun () -> Interlocked.Increment(varcount) 
 
 type LVar<'a> = Expr<'a>
 
 let fresh<'a>() : LVar<'a> = Expr.Var (Var(sprintf "_%i" (nextId()),typeof<'a>) ) |> Expr.Cast
 
-type Subst = Subst of Map<string,Expr> with
-//    member s.Length =
-//        match s with (Subst l) -> l.Length
-    static member Empty = Subst Map.empty
+type Subst = Map<string,Expr>
 
-let extNoCheck x v (Subst l) =
-    Subst (Map.add x v l)
+let extNoCheck = Map.add
 
 let (|LVar|_|) expr = 
     match expr with
-    | Patterns.Var v ->
-        //this is annoying - name can only be a string, so we need to convert to and from each time.
-        Some v.Name
+    | Patterns.Var v -> Some v.Name
     | _ -> None
 
-let rec walk v (Subst s as ss)  =
+let (|Find|_|) map key = Map.tryFind key map
+
+let rec walk v s =
     match v with
-    | LVar id -> 
-        let a = Map.tryFind id s
-        match a with
-        | Some rhs -> walk rhs ss
-        | None -> v //if not a variable or not found, return v 
+    | LVar (Find s rhs) -> walk rhs s 
     | _ -> v
 
 ///Returns true if adding an association between x and v
@@ -54,7 +51,7 @@ let rec occurs id v s =
 
 ///Calls extNoCheck only if the occurs call succeeds.
 let ext x v s =
-    if occurs x v s then 
+    if occursCheck && occurs x v s then 
         None
     else 
         Some <| extNoCheck x v s
@@ -62,8 +59,8 @@ let ext x v s =
 ///Unifies two terms u and v with respect to the substitution s, returning
 ///Some s', a potentially extended substitution if unification succeeds, and None if
 ///unification fails or would introduce a circularity.
-let rec unify u v s = 
-    let u = walk u s //remember: if u/v is a Var it will return what it's associated with
+let rec unify u v s : Subst option = 
+    let u = walk u s //remember: if u/v is a LVar it will return what it's associated with
     let v = walk v s //otherwise, it will just return  u/v itself
     match (u,v) with
     | Patterns.Value (u,_),Patterns.Value (v,_) when u = v -> Some s
@@ -77,22 +74,6 @@ let rec unify u v s =
         |> Seq.zip exprs2
         |> Seq.fold (fun subst (e1,e2) -> subst |> Option.bind (unify e1 e2)) (Some s)
     | _ -> None
-
-//let rec unifyNoCheck u v s = 
-//    let u = walk u s
-//    let v = walk v s
-//    match (u,v) with
-//    | Patterns.Value (u,_),Patterns.Value (v,_) when u = v -> Some s
-//    | LVar u, LVar v when u = v -> Some s
-//    | LVar u, LVar _ -> Some (extNoCheck u v s) //distinct, unassociated vars never introduce a circularity. Hence extNoCheck.
-//    | LVar u, _ -> Some (extNoCheck u v s)
-//    | _, LVar v -> Some (extNoCheck v u s)
-//    | Patterns.NewUnionCase (unionCaseInfo1, exprs1), Patterns.NewUnionCase (unionCaseInfo2, exprs2)
-//        when unionCaseInfo1 = unionCaseInfo2 ->
-//        exprs1
-//        |> Seq.zip exprs2
-//        |> Seq.fold (fun subst (e1,e2) -> subst |> Option.bind (unify e1 e2)) (Some s)
-//    | _ -> None
 
 ///Like walk, but also looks into recursive data structures
 let rec walkMany v s =

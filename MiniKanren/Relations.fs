@@ -18,6 +18,6 @@ let rec appendo xs ys out =
     recurse (fun () ->
         [] -=- xs &&& equiv ys out
         ||| let x,xs',res = fresh(),fresh(),fresh() in
-            equiv <@ %x::%xs' @> xs
+            equiv <@ %x::%xs'@> xs
             &&& appendo xs' ys res
             &&& equiv <@ %x::%res @> out)

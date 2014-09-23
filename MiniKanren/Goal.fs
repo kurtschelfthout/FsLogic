@@ -2,6 +2,7 @@ module MiniKanren.Goal
 
 open MiniKanren.Substitution
 open System
+open Microsoft.FSharp.Quotations
 
 //a good explantion of the need for all these cases is in the uKanren paper.
 type Stream<'a> =
@@ -11,7 +12,7 @@ type Stream<'a> =
     | Inc of Lazy<Stream<'a>>
 
 //A goal is a function that maps a substitution to an
-//ordered sequence of zero or more values. These are _almost always_ substitutions.
+//ordered sequence of zero or more values.
 type Goal = Subst -> Stream<Subst>
 
 let equiv (u:'a) (v:'a) : Goal =
@@ -20,6 +21,8 @@ let equiv (u:'a) (v:'a) : Goal =
         |> Option.map Unit
         |> Option.defaultTo MZero
 
+//this trick for unification overloading doesn't
+//reallly work well in all cases.
 type Equiv = Equiv with
     static member (?<-)(Equiv, l, v) = 
         equiv l <@ v @>
@@ -29,12 +32,6 @@ type Equiv = Equiv with
         equiv l r
  
 let inline (-=-) l r = Equiv ? (l) <- r
-
-//let equivNoCheck u v : Goal =
-//    fun a -> 
-//        unifyNoCheck u v a
-//        |> Option.map Unit
-//        |> Option.defaultTo MZero
 
 let rec mplus a b =
     match a with
@@ -90,31 +87,17 @@ let rec take n f =
         | Choice(a,f) ->  a :: take (n-1) f
 
 let inline run n (f: _ -> Goal) =
-    //let's hack this in
     Inc (lazy (let x = fresh()
-               let g0  = f x
-               bind (g0 Subst.Empty) (fun res -> walkMany x res |> Unit)(*(Unit << reify x)*)))
+               bind (f x Map.empty) (fun res -> walkMany x res |> Unit)(*(Unit << reify x)*)))
     |> take n
 
 let inline runEval n (f: _ -> Goal) =
-    //let's hack this in
-    Inc (lazy (let x = fresh()
-               let g0  = f x
-               bind (g0 Subst.Empty) (fun res -> walkMany x res |> Unit)(*(Unit << reify x)*)))
-    |> take n
+    run n f
     |> List.map Swensen.Unquote.Operators.evalRaw
 
-//this doesn't work because the x passed into the reify is not the real var - that is only
-//given by exist. And we can't bind the reify inside the exist because then the types don't match.
-//Sucks.
-//    let g = bind ((exist [x] (fun x -> f x)) Subst.Empty) (reify x >> Unit)
-//    take n g
-
-//let fresh() = Var (new Id())
-//
 //impure operators
-//let project (v:'a) (f:'a -> Goal) : Goal =
-//    fun s -> 
-//        //assume atom here..otherwise fail
-//        let x = walkMany v s
-//        f x s
+let project (v:Expr<'a>) (f:'a -> Goal) : Goal =
+    fun s -> 
+        //assume atom here..otherwise fail
+        let x = walkMany v s
+        f (Swensen.Unquote.Operators.evalRaw x) s

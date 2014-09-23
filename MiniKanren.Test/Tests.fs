@@ -92,8 +92,8 @@ let neveroTest() =
 
 [<Fact>]
 let appendoTest() =
-    let res = run 1 (fun q -> appendo q <@ [5; 4] @> <@ [3; 5; 4] @>)
-    (res |> List.map Operators.evalRaw) =? [ [3] ]
+    let res = runEval 1 (fun q -> appendo q <@ [5; 4] @> <@ [3; 5; 4] @>)
+    res =? [ [3] ]
 
 [<Fact>]
 let appendoTest2() =
@@ -102,12 +102,12 @@ let appendoTest2() =
         appendo l s <@ [1; 2] @>
         &&& equiv <@ ([%l; %s]) @> q)
     Assert.Equal(3, res.Length)
-//
-//[<Fact>]
-//let projectTest() = 
-//    let res = run 5 (fun q -> 
-//        let x = fresh()
-//        equiv (Atom 5) x
-//        &&& (project x (fun (Atom xv) -> equiv (Atom (xv*xv)) q)))
-//    Assert.Equal<_ list>([Atom 25], res)
-//
+
+[<Fact>]
+let projectTest() = 
+    let res = runEval 5 (fun q -> 
+        let x = fresh()
+        5 -=- x
+        &&& (project x (fun xv -> xv*xv -=- q)))
+    [25] =? res
+
