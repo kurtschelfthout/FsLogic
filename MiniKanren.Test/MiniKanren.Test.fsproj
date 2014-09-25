@@ -52,7 +52,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Tests.fs" />
+    <Compile Include="RelationsTest.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>

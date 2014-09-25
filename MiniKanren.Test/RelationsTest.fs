@@ -91,17 +91,69 @@ let neveroTest() =
     res =? [1; 3; 2]
 
 [<Fact>]
-let appendoTest() =
-    let res = runEval 1 (fun q -> appendo q <@ [5; 4] @> <@ [3; 5; 4] @>)
-    res =? [ [3] ]
+let ``conso finds correcct head``() =
+    let res = runEval 1 (fun q ->
+        conso q <@ [1;2;3] @> <@ [0;1;2;3] @>
+    )
+    res =? [0]
 
 [<Fact>]
-let appendoTest2() =
-    let res = run 3 (fun q -> 
+let ``conso finds correct tail``() =
+    let res = runEval 1 (fun q ->
+        conso <@ 0 @> q <@ [0;1;2;3] @>
+    )
+    res =? [ [1;2;3] ]
+
+[<Fact>]
+let ``conso finds correct tail if it is empty list``() =
+    let res : int list list = runEval 1 (fun q ->
+        conso <@ 0 @> q <@ [0] @>
+    )
+    res =? [ [] ]
+
+[<Fact>]
+let ``conso finds correct result``() =
+    let res = runEval 1 (fun q ->
+        conso <@ 0 @> <@ [1;2;3] @> q
+    )
+    res =? [ [0;1;2;3] ]
+
+[<Fact>]
+let ``conso finds correct combination of head and tail``() =
+    let res = runEval 100 (fun q ->
+        let h,t = fresh(),fresh()
+        conso h t <@ [1;2;3] @>
+        &&& equiv <@ %h,%t @> q
+    )
+    //res.Length =? 1
+    res =? [ 1,[2;3] ]
+
+[<Fact>]
+let ``appendo finds correct prefix``() =
+    let res = runEval 1 (fun q -> appendo q <@ [5; 4] @> <@ [2; 3; 5; 4] @>)
+    res =? [ [2; 3] ]
+
+[<Fact>]
+let ``appendo finds correct postfix``() =
+    let res = runEval 1 (fun q -> appendo <@ [3; 5] @> q <@ [3; 5; 4; 3] @>)
+    res =? [ [4; 3] ]
+
+[<Fact>]
+let ``appendo finds empty postfix``() =
+    let res : int list list = runEval 1 (fun q -> appendo <@ [3; 5] @> q <@ [3; 5] @>)
+    res =? [ [] ]
+
+[<Fact>]
+let ``appendo finds correct number of prefix and postfix combinations``() =
+    let res = runEval 5 (fun q -> 
         let l,s = fresh(),fresh()
-        appendo l s <@ [1; 2] @>
-        &&& equiv <@ ([%l; %s]) @> q)
-    Assert.Equal(3, res.Length)
+        appendo l s <@ [1; 2; 3] @>
+        &&& equiv <@ (%l, %s) @> q)
+    res =? [  [], [1;2;3]
+              [1], [2;3]
+              [1;2], [3]
+              [1;2;3], []
+           ]
 
 [<Fact>]
 let projectTest() = 

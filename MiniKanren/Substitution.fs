@@ -45,8 +45,9 @@ let rec occurs id v s =
     let vs = walk v s
     match vs with
     | LVar id' -> id'.Equals(id)
-    | Patterns.NewUnionCase (unionCaseInfo, exprs) ->
-        Seq.exists (fun exp -> occurs id exp s) exprs        
+    | Patterns.NewUnionCase (_, exprs)
+    | Patterns.NewTuple exprs -> 
+        Seq.exists (fun exp -> occurs id exp s) exprs 
     | _ -> false   
 
 ///Calls extNoCheck only if the occurs call succeeds.
@@ -60,6 +61,9 @@ let ext x v s =
 ///Some s', a potentially extended substitution if unification succeeds, and None if
 ///unification fails or would introduce a circularity.
 let rec unify u v s : Subst option = 
+    let unifySubExprs exprs1 exprs2 =
+        Seq.zip exprs1 exprs2
+        |> Seq.fold (fun subst (e1,e2) -> subst |> Option.bind (unify e1 e2)) (Some s)
     let u = walk u s //remember: if u/v is a LVar it will return what it's associated with
     let v = walk v s //otherwise, it will just return  u/v itself
     match (u,v) with
@@ -70,17 +74,20 @@ let rec unify u v s : Subst option =
     | _, LVar v -> ext v u s
     | Patterns.NewUnionCase (unionCaseInfo1, exprs1), Patterns.NewUnionCase (unionCaseInfo2, exprs2)
         when unionCaseInfo1 = unionCaseInfo2 ->
-        exprs1
-        |> Seq.zip exprs2
-        |> Seq.fold (fun subst (e1,e2) -> subst |> Option.bind (unify e1 e2)) (Some s)
+            unifySubExprs exprs1 exprs2
+    | Patterns.NewTuple exprs1,Patterns.NewTuple exprs2
+        when exprs1.Length = exprs2.Length && exprs1 |> List.map (fun e -> e.Type) = (exprs2 |> List.map (fun e -> e.Type)) ->
+            unifySubExprs exprs1 exprs2
     | _ -> None
 
 ///Like walk, but also looks into recursive data structures
 let rec walkMany v s =
     let v = walk v s
     match v with
-    | Patterns.NewUnionCase (unionCaseInfo, exprs) -> 
+    | Patterns.NewUnionCase (unionCaseInfo, exprs) ->
         Expr.NewUnionCase (unionCaseInfo, exprs |> List.map (fun e -> walkMany e s))
+    | Patterns.NewTuple exprs-> 
+        Expr.NewTuple (exprs |> List.map (fun e -> walkMany e s))
     | _ -> v
   
 //type Reified =
