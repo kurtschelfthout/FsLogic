@@ -6,6 +6,17 @@ open MiniKanren.Substitution
 open MiniKanren.Relations
 open Xunit
 open Swensen.Unquote
+open Microsoft.FSharp.Quotations
+
+//from a quotation structured as let...in... get
+//the expression after the in. This makes it easier
+//to write a quotation that has unbound variables
+//which in turn we need to compare the results of some
+//tests.
+let rec getResult letExpr =
+    match letExpr with
+    | Patterns.Let (_,_,body) -> getResult body
+    | b -> b
 
 [<Fact>]
 let g0() = 
@@ -28,8 +39,7 @@ let g2() =
             let (x,y,z) = fresh(),fresh(),fresh()
             equiv <@ [%x; %y; %z; %x] @> q
             ||| equiv <@ [%z; %y; %x; %z] @> q)
-    //printf "%s"  (res |> List.map Operators.decompile |> String.concat ";")
-    Assert.Equal(2, res.Length)
+    2 =? res.Length
 
 [<Fact>]
 let g3() = 
@@ -46,7 +56,7 @@ let g4() =
             let x,y,z = fresh(),fresh(),fresh()
             equiv <@ [x; y] @> q
             ||| equiv <@ [y; y] @> q)
-    Assert.Equal(2, res.Length)
+    2 =? res.Length
 
 [<Fact>]
 let infinite() = 
@@ -163,3 +173,12 @@ let projectTest() =
         &&& (project x (fun xv -> xv*xv -=- q)))
     [25] =? res
 
+[<Fact>]
+let copyTermTest() =
+    let g = run 2 (fun q ->
+        let (w,x,y,z) = fresh(),fresh(),fresh(),fresh()
+        equiv <@ "a", %x, 5, %y, %x @> w
+        &&& copyTerm w z
+        &&& equiv <@ %w, %z @> q)
+    let result = <@ let _0,_1,_2,_3 = obj(),obj(),obj(),obj() in ("a", _0, 5, _1, _0), ("a", _2, 5, _3, _2) @> |> getResult
+    sprintf "%A" g =? sprintf "%A" [ result ]

@@ -122,6 +122,19 @@ let rec walkMany v s =
 //    let v = walkMany v s
 //    walkMany v (reifyS v Subst.Empty)
 
+//replaces all variables in an expression with names like _0, _1 etc.
+let rec reifyS (v:Var) (m:Map<_,_>) =
+    match v with
+    | Find m v -> m,v
+    | _ ->
+        let reifyName = sprintf "_%i"
+        let reified = Expr.Var (Var(reifyName m.Count,v.Type))
+        m |> Map.add v reified,reified
+
+let reify v s =
+    let v = walkMany v s
+    let map = ref Map.empty
+    v.Substitute(fun var -> let (newmap,newvar) = reifyS var !map in map := newmap; Some newvar)
 
 
 

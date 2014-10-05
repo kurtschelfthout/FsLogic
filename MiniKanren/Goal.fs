@@ -88,12 +88,17 @@ let rec take n f =
 
 let inline run n (f: _ -> Goal) =
     Inc (lazy (let x = fresh()
-               bind (f x Map.empty) (fun res -> walkMany x res |> Unit)(*(Unit << reify x)*)))
+               bind (f x Map.empty) (reify x >> Unit)))
     |> take n
 
 let inline runEval n (f: _ -> Goal) =
     run n f
     |> List.map Swensen.Unquote.Operators.evalRaw
+
+let inline runShow n (f: _ -> Goal) =
+    run n f
+    |> Seq.map Swensen.Unquote.Operators.decompile
+    |> String.concat Environment.NewLine
 
 //impure operators
 let project (v:Expr<'a>) (f:'a -> Goal) : Goal =
@@ -101,3 +106,16 @@ let project (v:Expr<'a>) (f:'a -> Goal) : Goal =
         //assume atom here..otherwise fail
         let x = walkMany v s
         f (Swensen.Unquote.Operators.evalRaw x) s
+
+let copyTerm u v : Goal =
+    let rec buildSubst u s : Subst=
+        match u with
+        | LVar (Find s _) -> s
+        | LVar u -> Map.add u (upcast fresh()) s
+        | Patterns.NewUnionCase (_, exprs)
+        | Patterns.NewTuple exprs -> 
+            List.fold (fun s expr -> buildSubst expr s) s exprs
+        | _ -> s
+    fun s ->
+        let u = walkMany u s
+        equiv (walkMany u (buildSubst u Map.empty)) v s
