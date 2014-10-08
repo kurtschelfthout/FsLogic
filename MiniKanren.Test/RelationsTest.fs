@@ -40,6 +40,9 @@ let g2() =
             equiv <@ [%x; %y; %z; %x] @> q
             ||| equiv <@ [%z; %y; %x; %z] @> q)
     2 =? res.Length
+    //numbering restarts with each value
+    let expected = <@ let _0,_1,_2 =fresh(),fresh(),fresh() in [ _0;_1;_2;_0 ] @> |> getResult
+    sprintf "%A" [ expected; expected ] =? sprintf "%A" res
 
 [<Fact>]
 let g3() = 
@@ -54,9 +57,12 @@ let g4() =
     let res = 
         run 5 (fun q -> 
             let x,y,z = fresh(),fresh(),fresh()
-            equiv <@ [x; y] @> q
-            ||| equiv <@ [y; y] @> q)
+            equiv <@ [%x; %y] @> q
+            ||| equiv <@ [%y; %y] @> q)
     2 =? res.Length
+    let expected0 = <@ let _0,_1 =fresh(),fresh() in [ _0;_1 ] @> |> getResult
+    let expected1 = <@ let _0 =fresh() in [ _0;_0 ] @> |> getResult
+    sprintf "%A" [ expected0; expected1 ] =? sprintf "%A" res
 
 [<Fact>]
 let infinite() = 
