@@ -62,8 +62,29 @@ let conde (goals:#seq<list<Goal>>) : Goal =
     fun a -> 
         Inc (lazy (mplusMany (goals |> Seq.map (fun (g::gs) -> bindMany (g a) gs) |> Seq.toList)))
 
-//let (=>) g1 g2 = 
-//    fun a -> bind (g1 a) g2
+let conda (goals:list<list<Goal>>) : Goal = 
+    let rec ifa subst = function
+        | [] | [[]] -> MZero
+        | (g0::g)::gs ->
+            let rec loop = function
+                | MZero -> ifa subst gs
+                | Inc f -> loop f.Value
+                | Unit _  
+                | Choice (_,_) as a-> bindMany a g
+            loop (g0 subst)
+    fun subst -> ifa subst (goals |> Seq.toList)
+
+let condu (goals:list<list<Goal>>) : Goal = 
+    let rec ifu subst = function
+        | [] | [[]] -> MZero
+        | (g0::g)::gs ->
+            let rec loop = function
+                | MZero -> ifu subst gs
+                | Inc f -> loop f.Value
+                | Unit _ as a -> bindMany a g
+                | Choice (a,_) -> bindMany (Unit a) g
+            loop (g0 subst)
+    fun subst -> ifu subst (goals |> Seq.toList)
 
 let (|||) g1 g2 =
     fun a -> mplus (g1 a) (g2 a)
@@ -119,3 +140,4 @@ let copyTerm u v : Goal =
     fun s ->
         let u = walkMany u s
         equiv (walkMany u (buildSubst u Map.empty)) v s
+

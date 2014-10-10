@@ -13,6 +13,9 @@ let alwayso = anyo (equiv <@ true @> <@ true @>)
 ///Goal that fails an unbounded number of times.
 let nevero = anyo (equiv <@ true @> <@ false @>)
 
+///Non-relational. The given goal succeeds at most once.
+let onceo goal = condu [ [ goal ] ]
+
 //---lists----
 
 ///Relates l with the empty lst.
