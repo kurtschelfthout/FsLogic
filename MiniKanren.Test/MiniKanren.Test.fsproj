@@ -52,6 +52,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="UnificationTest.fs" />
     <Compile Include="RelationsTest.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />

@@ -1,5 +1,5 @@
 ﻿
-module Tests
+module RelationsTest
 
 open MiniKanren.Goal
 open MiniKanren.Substitution

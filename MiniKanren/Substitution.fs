@@ -20,6 +20,11 @@ let nextId =
 type LVar<'a> = Expr<'a>
 
 let fresh<'a>() : LVar<'a> = Expr.Var (Var(sprintf "_%i" (nextId()),typeof<'a>) ) |> Expr.Cast
+let fresh2() = (fresh(),fresh())
+let fresh3() = (fresh(),fresh(),fresh())
+let fresh4() = (fresh(),fresh(),fresh(),fresh())
+[<GeneralizableValueAttribute>]
+let __<'a> : Expr<'a> = Expr.Var (Var ("__",typeof<'a>)) |> Expr.Cast
 
 type Subst = Map<string,Expr>
 
@@ -68,7 +73,8 @@ let rec unify u v s : Subst option =
     let v = walk v s //otherwise, it will just return  u/v itself
     match (u,v) with
     | Patterns.Value (u,_),Patterns.Value (v,_) when u = v -> Some s
-    | LVar u, LVar v when u = v -> Some s
+    | LVar u, LVar v when u = v-> Some s
+    | LVar u, _ | _, LVar u when u = "__" -> Some s //don't cares never create new substitutions
     | LVar u, LVar _ -> Some (extNoCheck u v s) //distinct, unassociated vars never introduce a circularity. Hence extNoCheck.
     | LVar u, _ -> ext u v s
     | _, LVar v -> ext v u s
