@@ -56,11 +56,3 @@ let ``unifying element of tuple with variable should extend substitution``() =
     let expected = [ (aName, <@ 0 @> :> Expr) ] |> Map.ofList
     unify <@ %a,1 @> <@ 0,1 @> Map.empty =? Some expected
     unify <@ 0,1 @> <@ %a,1 @> Map.empty =? Some expected
-
-[<Fact>]
-let ``unifying don't care with anything succeeds without extending substitution``() =
-    let (LVar aName) as a = fresh<int list>()
-    unify __ <@ 0 @> Map.empty =? Some Map.empty
-    unify <@ 0 @> __  Map.empty =? Some Map.empty
-    unify __ a Map.empty =? Some Map.empty
-    unify a __ Map.empty =? Some Map.empty
