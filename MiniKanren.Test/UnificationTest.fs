@@ -9,15 +9,17 @@ open Microsoft.FSharp.Quotations
 
 [<Fact>]
 let ``unifying two identical variables should succeed and not extend subst``() =
-    let (LVar aName) as a = fresh()
+    let a = fresh()
     unify a a Map.empty =? Some Map.empty
 
 [<Fact>]
 let ``unifying two different variables should succeed and extend subst``() =
     let (LVar aName) as a = fresh()
     let (LVar bName) as b = fresh()
+
     let expected = [ (aName, b :> Expr) ] |> Map.ofList
     unify a b Map.empty =? Some expected
+
     let expected = [ (bName, a :> Expr) ] |> Map.ofList
     unify b a Map.empty =? Some expected
 

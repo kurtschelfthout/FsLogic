@@ -20,9 +20,9 @@ let nextId =
 type LVar<'a> = Expr<'a>
 
 let fresh<'a>() : LVar<'a> = Expr.Var (Var(sprintf "_%i" (nextId()),typeof<'a>) ) |> Expr.Cast
-let fresh2() = (fresh(),fresh())
-let fresh3() = (fresh(),fresh(),fresh())
-let fresh4() = (fresh(),fresh(),fresh(),fresh())
+let fresh2() = fresh(),fresh()
+let fresh3() = fresh(),fresh(),fresh()
+let fresh4() = fresh(),fresh(),fresh(),fresh()
 
 //shortcut to say "don't care"
 let __() = fresh()
