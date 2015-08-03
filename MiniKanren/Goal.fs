@@ -12,8 +12,8 @@ type Goal = Subst -> Stream<Subst>
 let equiv (u:'a) (v:'a) : Goal =
     fun a -> 
         unify u v a
-        |> Option.map Unit
-        |> Option.defaultTo MZero
+        |> Option.map result
+        |> Option.defaultTo mzero
 
 //this trick for unification overloading doesn't
 //reallly work well in all cases.
@@ -28,15 +28,15 @@ type Equiv = Equiv with
 let inline (-=-) l r = Equiv ? (l) <- r
 
 let all ((g::gs) as goals:list<Goal>) : Goal =
-    fun a -> Inc (lazy (bindMany (g a) gs))
+    fun a -> delay (fun () -> (bindMany (g a) gs))
 
 let conde (goals:#seq<list<Goal>>) : Goal =
     fun a -> 
-        Inc (lazy (mplusMany (goals |> Seq.map (fun (g::gs) -> bindMany (g a) gs) |> Seq.toList)))
+        delay (fun () -> (mplusMany (goals |> Seq.map (fun (g::gs) -> bindMany (g a) gs) |> Seq.toList)))
 
 let conda (goals:list<list<Goal>>) : Goal = 
     let rec ifa subst = function
-        | [] | [[]] -> MZero
+        | [] | [[]] -> mzero
         | (g0::g)::gs ->
             let rec loop = function
                 | MZero -> ifa subst gs
@@ -48,13 +48,13 @@ let conda (goals:list<list<Goal>>) : Goal =
 
 let condu (goals:list<list<Goal>>) : Goal = 
     let rec ifu subst = function
-        | [] | [[]] -> MZero
+        | [] | [[]] -> mzero
         | (g0::g)::gs ->
             let rec loop = function
                 | MZero -> ifu subst gs
                 | Inc f -> loop f.Value
                 | Unit _ as a -> bindMany a g
-                | Choice (a,_) -> bindMany (Unit a) g
+                | Choice (a,_) -> bindMany (result a) g
             loop (g0 subst)
     fun subst -> ifu subst (goals |> Seq.toList)
 
@@ -65,9 +65,9 @@ let (&&&) g1 g2 =
     fun a -> bind (g1 a) g2
 
 let inline recurse fg =
-    fun a -> Inc (lazy fg() a)
+    fun a -> delay (fun () -> fg() a)
 
-let rec fix f x = fun a -> Inc (lazy (f (fix f) x a))
+let rec fix f x = fun a -> delay (fun () -> (f (fix f) x a))
 
 let rec take n f =
     if n = 0 then 
@@ -80,8 +80,8 @@ let rec take n f =
         | Choice(a,f) ->  a :: take (n-1) f
 
 let inline run n (f: _ -> Goal) =
-    Inc (lazy (let x = fresh()
-               bind (f x Map.empty) (reify x >> Unit)))
+    delay (fun () -> let x = fresh()
+                     bind (f x Map.empty) (reify x >> result))
     |> take n
 
 let inline runEval n (f: _ -> Goal) =
