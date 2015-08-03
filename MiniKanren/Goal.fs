@@ -1,15 +1,9 @@
 module MiniKanren.Goal
 
 open MiniKanren.Substitution
+open MiniKanren.Stream
 open System
 open Microsoft.FSharp.Quotations
-
-//a good explantion of the need for all these cases is in the uKanren paper.
-type Stream<'a> =
-    | MZero
-    | Unit of 'a
-    | Choice of 'a * Stream<'a>
-    | Inc of Lazy<Stream<'a>>
 
 //A goal is a function that maps a substitution to an
 //ordered sequence of zero or more values.
@@ -32,31 +26,6 @@ type Equiv = Equiv with
         equiv l r
  
 let inline (-=-) l r = Equiv ? (l) <- r
-
-let rec mplus a b =
-    match a with
-    | MZero -> b
-    | Unit a -> Choice (a,b)
-    | Choice(a,b') -> Choice (a,mplus b b') //interesting - interleaving of the results here
-    | Inc a' -> Inc (lazy mplus b a'.Value) 
-
-let rec bind s g =
-    match s with
-    | MZero -> MZero
-    | Unit a -> g a
-    | Choice (a,b) -> mplus (g a) (bind b g)
-    | Inc f -> Inc (lazy bind f.Value g)
-
-let rec mplusMany streams =
-    match streams with
-    | [] -> MZero
-    | [g] -> g
-    | (g::gs) -> mplus g (mplusMany gs)
-
-let rec bindMany str goals =
-    match goals with
-    | [] -> str
-    | (g::gs) -> bindMany (bind str g) gs
 
 let all ((g::gs) as goals:list<Goal>) : Goal =
     fun a -> Inc (lazy (bindMany (g a) gs))

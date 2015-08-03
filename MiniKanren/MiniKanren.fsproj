@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="Util.fs" />
     <Compile Include="Substitution.fs" />
+    <Compile Include="Stream.fs" />
     <Compile Include="Goal.fs" />
     <Compile Include="Relations.fs" />
     <Compile Include="Arithmetic.fs" />
