@@ -1,115 +1,125 @@
-module MiniKanren.Goal
+namespace MiniKanren
 
-open MiniKanren.Substitution
-open MiniKanren.Stream
-open System
-open Microsoft.FSharp.Quotations
 
-//A goal is a function that maps a substitution to an
-//ordered sequence of zero or more values.
-type Goal = Subst -> Stream<Subst>
+module Goal =
 
-let equiv (u:'a) (v:'a) : Goal =
-    fun a -> 
-        unify u v a
-        |> Option.map result
-        |> Option.defaultTo mzero
+    open MiniKanren.Substitution
+    open MiniKanren
+    open System
+    open Microsoft.FSharp.Quotations
 
-//this trick for unification overloading doesn't
-//reallly work well in all cases.
-type Equiv = Equiv with
-    static member (?<-)(Equiv, l, v) = 
-        equiv l <@ v @>
-    static member (?<-)(Equiv, v, r) = 
-        equiv <@ v @> r
-    static member (?<-)(Equiv, l:Quotations.Expr<'a>,r:Quotations.Expr<'a>) =
-        equiv l r
+    type Goal = Goal of (Subst -> Stream<Subst>) with 
+        static member un(Goal g) = g
+        static member un(gs:List<Goal>) = gs |> List.map Goal.un
+        static member (&&&)(Goal g1,Goal g2) =
+            Goal <| fun s -> g1 s >>= g2
+        static member (|||)(Goal g1,Goal g2) =
+            Goal <| fun s -> g1 s +++ g2 s
+
+    let (|Goals|) (g:list<_>) = Goal.un g
+
+    //A goal is a function that maps a substitution to an
+    //ordered sequence of zero or more values.
+    let equiv (u:'a) (v:'a) : Goal =
+        Goal <| fun a -> 
+            unify u v a
+            |> Option.map Stream.unit
+            |> Option.defaultTo Stream.mzero
+
+    //this trick for unification overloading doesn't
+    //reallly work well in all cases.
+    type Equiv = Equiv with
+        static member (?<-)(Equiv, l, v) = 
+            equiv l <@ v @>
+        static member (?<-)(Equiv, v, r) = 
+            equiv <@ v @> r
+        static member (?<-)(Equiv, l:Quotations.Expr<'a>,r:Quotations.Expr<'a>) =
+            equiv l r
  
-let inline (-=-) l r = Equiv ? (l) <- r
+    let inline (-=-) l r = Equiv ? (l) <- r
 
-let all ((g::gs) as goals:list<Goal>) : Goal =
-    fun a -> delay (fun () -> (bindMany (g a) gs))
+    let all (Goals goals) : Goal =
+        let g = goals |> List.head
+        let gs = goals |> List.tail
+        Goal <| fun a -> Stream.delay (fun () -> (Stream.bindMany (g a) gs))
 
-let conde (goals:#seq<list<Goal>>) : Goal =
-    fun a -> 
-        delay (fun () -> (mplusMany (goals |> Seq.map (fun (g::gs) -> bindMany (g a) gs) |> Seq.toList)))
+    let conde (goals:#seq<list<Goal>>) : Goal =
+        Goal <| fun a -> 
+            Stream.delay (fun () -> 
+                (Stream.mplusMany (goals |> Seq.map (fun ((Goal g)::(Goals gs)) -> 
+                    Stream.bindMany (g a) gs) |> Seq.toList)))
 
-let conda (goals:list<list<Goal>>) : Goal = 
-    let rec ifa subst = function
-        | [] | [[]] -> mzero
-        | (g0::g)::gs ->
-            let rec loop = function
-                | MZero -> ifa subst gs
-                | Inc f -> loop f.Value
-                | Unit _  
-                | Choice (_,_) as a-> bindMany a g
-            loop (g0 subst)
-    fun subst -> ifa subst (goals |> Seq.toList)
+    let conda (goals:list<list<Goal>>) : Goal = 
+        let rec ifa subst = function
+            | [] | [[]] -> Stream.mzero
+            | ((Goal g0)::(Goals g))::gs ->
+                let rec loop = function
+                    | MZero -> ifa subst gs
+                    | Inc f -> loop f.Value
+                    | Unit _  
+                    | Choice (_,_) as a-> Stream.bindMany a g
+                loop (g0 subst)
+        Goal <| fun subst -> ifa subst goals
 
-let condu (goals:list<list<Goal>>) : Goal = 
-    let rec ifu subst = function
-        | [] | [[]] -> mzero
-        | (g0::g)::gs ->
-            let rec loop = function
-                | MZero -> ifu subst gs
-                | Inc f -> loop f.Value
-                | Unit _ as a -> bindMany a g
-                | Choice (a,_) -> bindMany (result a) g
-            loop (g0 subst)
-    fun subst -> ifu subst (goals |> Seq.toList)
+    let condu (goals:list<list<Goal>>) : Goal = 
+        let rec ifu subst = function
+            | [] | [[]] -> Stream.mzero
+            | ((Goal g0)::(Goals g))::gs ->
+                let rec loop = function
+                    | MZero -> ifu subst gs
+                    | Inc f -> loop f.Value
+                    | Unit _ as a -> Stream.bindMany a g
+                    | Choice (a,_) -> Stream.bindMany (Stream.unit a) g
+                loop (g0 subst)
+        Goal <| fun subst -> ifu subst goals
 
-let (|||) g1 g2 =
-    fun a -> mplus (g1 a) (g2 a)
+    let inline recurse fg =
+        Goal <| fun a -> Stream.delay (fun () -> let (Goal g) = fg() in g a)
 
-let (&&&) g1 g2 = 
-    fun a -> bind (g1 a) g2
+    let rec fix f x = fun a -> Stream.delay (fun () -> (f (fix f) x a))
 
-let inline recurse fg =
-    fun a -> delay (fun () -> fg() a)
+    let rec take n f =
+        if n = 0 then 
+            []
+        else
+            match f with
+            | MZero -> []
+            | Inc (Lazy s) -> take n s
+            | Unit a -> [a]
+            | Choice(a,f) ->  a :: take (n-1) f
 
-let rec fix f x = fun a -> delay (fun () -> (f (fix f) x a))
+    let inline run n (f: _ -> Goal) =
+        Stream.delay (fun () -> let x = fresh()
+                                (Goal.un (f x) Map.empty) >>= (reify x >> Stream.unit))
+        |> take n
 
-let rec take n f =
-    if n = 0 then 
-        []
-    else
-        match f with
-        | MZero -> []
-        | Inc (Lazy s) -> take n s
-        | Unit a -> [a]
-        | Choice(a,f) ->  a :: take (n-1) f
+    let inline runEval n (f: _ -> Goal) =
+        run n f
+        |> List.map Swensen.Unquote.Operators.evalRaw
 
-let inline run n (f: _ -> Goal) =
-    delay (fun () -> let x = fresh()
-                     bind (f x Map.empty) (reify x >> result))
-    |> take n
+    let inline runShow n (f: _ -> Goal) =
+        run n f
+        |> Seq.map Swensen.Unquote.Operators.decompile
+        |> String.concat Environment.NewLine
 
-let inline runEval n (f: _ -> Goal) =
-    run n f
-    |> List.map Swensen.Unquote.Operators.evalRaw
+    //impure operators
+    let project (v:Expr<'a>) (f:'a -> Goal) : Goal =
+        Goal <| fun s -> 
+            //assume atom here..otherwise fail
+            let x = walkMany v s
+            Goal.un (f (Swensen.Unquote.Operators.evalRaw x)) s
 
-let inline runShow n (f: _ -> Goal) =
-    run n f
-    |> Seq.map Swensen.Unquote.Operators.decompile
-    |> String.concat Environment.NewLine
+    let copyTerm u v : Goal =
+        let rec buildSubst u s : Subst=
+            match u with
+            | LVar (Find s _) -> s
+            | LVar u -> Map.add u (upcast fresh()) s
+            | Patterns.NewUnionCase (_, exprs)
+            | Patterns.NewTuple exprs -> 
+                List.fold (fun s expr -> buildSubst expr s) s exprs
+            | _ -> s
+        Goal <| fun s ->
+            let u = walkMany u s
+            Goal.un (equiv (walkMany u (buildSubst u Map.empty)) v) s
 
-//impure operators
-let project (v:Expr<'a>) (f:'a -> Goal) : Goal =
-    fun s -> 
-        //assume atom here..otherwise fail
-        let x = walkMany v s
-        f (Swensen.Unquote.Operators.evalRaw x) s
-
-let copyTerm u v : Goal =
-    let rec buildSubst u s : Subst=
-        match u with
-        | LVar (Find s _) -> s
-        | LVar u -> Map.add u (upcast fresh()) s
-        | Patterns.NewUnionCase (_, exprs)
-        | Patterns.NewTuple exprs -> 
-            List.fold (fun s expr -> buildSubst expr s) s exprs
-        | _ -> s
-    fun s ->
-        let u = walkMany u s
-        equiv (walkMany u (buildSubst u Map.empty)) v s
-
+    
