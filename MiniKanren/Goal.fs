@@ -1,6 +1,5 @@
 namespace MiniKanren
 
-
 module Goal =
 
     open MiniKanren.Substitution
@@ -10,13 +9,12 @@ module Goal =
 
     type Goal = Goal of (Subst -> Stream<Subst>) with 
         static member un(Goal g) = g
-        static member un(gs:List<Goal>) = gs |> List.map Goal.un
         static member (&&&)(Goal g1,Goal g2) =
             Goal <| fun s -> g1 s >>= g2
         static member (|||)(Goal g1,Goal g2) =
             Goal <| fun s -> g1 s +++ g2 s
 
-    let (|Goals|) (g:list<_>) = Goal.un g
+    let (|Goals|) (g:list<_>) = g |> List.map Goal.un
 
     //A goal is a function that maps a substitution to an
     //ordered sequence of zero or more values.
