@@ -24,17 +24,7 @@ module Goal =
             |> Option.map Stream.unit
             |> Option.defaultTo Stream.mzero
 
-    //this trick for unification overloading doesn't
-    //reallly work well in all cases.
-    type Equiv = Equiv with
-        static member (?<-)(Equiv, l, v) = 
-            equiv l <@ v @>
-        static member (?<-)(Equiv, v, r) = 
-            equiv <@ v @> r
-        static member (?<-)(Equiv, l:Quotations.Expr<'a>,r:Quotations.Expr<'a>) =
-            equiv l r
- 
-    let inline (-=-) l r = Equiv ? (l) <- r
+    let (-=-) u v = equiv u v
 
     let all (Goals goals) : Goal =
         let g = goals |> List.head
@@ -55,7 +45,7 @@ module Goal =
                     | MZero -> ifa subst gs
                     | Inc f -> loop f.Value
                     | Unit _  
-                    | Choice (_,_) as a-> Stream.bindMany a g
+                    | Choice (_,_) as a -> Stream.bindMany a g
                 loop (g0 subst)
         Goal <| fun subst -> ifa subst goals
 
@@ -85,7 +75,7 @@ module Goal =
             | Inc (Lazy s) -> take n s
             | Unit a -> [a]
             | Choice(a,f) ->  a :: take (n-1) f
-
+(*
     let inline run n (f: _ -> Goal) =
         Stream.delay (fun () -> let x = fresh()
                                 (Goal.un (f x) Map.empty) >>= (reify x >> Stream.unit))
@@ -119,5 +109,4 @@ module Goal =
         Goal <| fun s ->
             let u = walkMany u s
             Goal.un (equiv (walkMany u (buildSubst u Map.empty)) v) s
-
-    
+*)    
