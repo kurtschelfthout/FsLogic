@@ -186,6 +186,6 @@ module Goal =
             | _ -> s
         Goal <| fun s ->
             let u = walkMany u s
-            Goal.Subst (equiv_ (walkMany u (buildSubst u Map.empty)) v) s
+            Goal.Subst (equivImpl (walkMany u (buildSubst u Map.empty)) v) s
 
     
