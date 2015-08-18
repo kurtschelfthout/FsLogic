@@ -8,13 +8,13 @@ module Goal =
     open Microsoft.FSharp.Quotations
 
     type Goal = Goal of (Subst -> Stream<Subst>) with 
-        static member un(Goal g) = g
+        static member Subst(Goal g) = g
         static member (&&&)(Goal g1,Goal g2) =
-            Goal <| fun s -> g1 s >>= g2
+            Goal (g1 >=> g2)
         static member (|||)(Goal g1,Goal g2) =
             Goal <| fun s -> g1 s +++ g2 s
 
-    let (|Goals|) (g:list<_>) = g |> List.map Goal.un
+    let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
 
     //A goal is a function that maps a substitution to an
     //ordered sequence of zero or more values.
@@ -88,7 +88,7 @@ module Goal =
 
     let inline run n (f: _ -> Goal) =
         Stream.delay (fun () -> let x = fresh()
-                                (Goal.un (f x) Map.empty) >>= (reify x >> Stream.unit))
+                                (Goal.Subst (f x) Map.empty) >>= (reify x >> Stream.unit))
         |> take n
 
     let inline runEval n (f: _ -> Goal) =
@@ -105,7 +105,7 @@ module Goal =
         Goal <| fun s -> 
             //assume atom here..otherwise fail
             let x = walkMany v s
-            Goal.un (f (Swensen.Unquote.Operators.evalRaw x)) s
+            Goal.Subst (f (Swensen.Unquote.Operators.evalRaw x)) s
 
     let copyTerm u v : Goal =
         let rec buildSubst u s : Subst=
@@ -118,6 +118,6 @@ module Goal =
             | _ -> s
         Goal <| fun s ->
             let u = walkMany u s
-            Goal.un (equiv (walkMany u (buildSubst u Map.empty)) v) s
+            Goal.Subst (equiv_ (walkMany u (buildSubst u Map.empty)) v) s
 
     
