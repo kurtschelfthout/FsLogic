@@ -50,5 +50,9 @@ module Stream =
     let stream = StreamBuilder()
 
 type Stream<'a> with
-        static member (>>=)(m,f) = Stream.bind m f
-        static member (+++)(m1,m2) = Stream.mplus m1 m2
+    static member (>>=)(m,f) = Stream.bind m f
+    static member (+++)(m1,m2) = Stream.mplus m1 m2
+
+[<AutoOpen>]
+module General =
+    let inline (>=>) f g = fun x -> f x >>= g
