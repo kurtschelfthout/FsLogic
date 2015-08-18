@@ -20,16 +20,17 @@ let rec getResult letExpr =
 
 [<Fact>]
 let g0() = 
-    let goal q = 
+    let goal (q:LVar<_>) = 
         let x = fresh() 
-        x -=- 3 
+        //3 .Equiv x
+        equiv x <@ 3 @>
         &&& equiv q x
     let res = runEval -1 goal
     res =? [ 3 ]
 
 [<Fact>]
 let g1() = 
-    let res = runEval -1 (fun x ->  x -=- 1)
+    let res = runEval -1 (fun x ->  equiv x <@ 1 @>)
     res =? [ 1 ]
 
 [<Fact>]
@@ -37,8 +38,8 @@ let g2() =
     let res = 
         run -1 (fun q -> 
             let (x,y,z) = fresh(),fresh(),fresh()
-            equiv <@ [%x; %y; %z; %x] @> q
-            ||| equiv <@ [%z; %y; %x; %z] @> q)
+            equiv q <@ [%x; %y; %z; %x]  @>
+            ||| equiv q <@ [%z; %y; %x; %z] @>)
     2 =? res.Length
     //numbering restarts with each value
     let expected = <@ let _0,_1,_2 =fresh(),fresh(),fresh() in [ _0;_1;_2;_0 ] @> |> getResult
@@ -49,7 +50,7 @@ let g3() =
     let res = 
         runEval -1 (fun q -> 
             let y = fresh()
-            equiv y q &&& 3 -=- y)
+            equiv y q &&& equiv <@ 3 @> y)
     res =? [3]
 
 [<Fact>]
@@ -68,8 +69,8 @@ let g4() =
 let infinite() = 
     let res = runEval 7 (fun q ->  
                 let rec loop() =
-                    conde [ [ false -=- q ]
-                            [ q -=- true  ]
+                    conde [ [ equiv <@ false @> q ]
+                            [ equiv q <@ true @> ]
                             [ recurse loop] ]
                 loop())
     res =? [ false; true; false; true; false; true; false]
@@ -77,33 +78,33 @@ let infinite() =
 
 [<Fact>]
 let anyoTest() = 
-    let res = runEval 5 (fun q -> anyo (false -=- q) ||| true -=- q)
+    let res = runEval 5 (fun q -> anyo (equiv <@ false @> q) ||| equiv <@ true @> q)
     res =? [true; false; false; false; false]
 
 [<Fact>]
 let anyoTest2() =  
     let res = runEval 5 (fun q -> 
-        anyo (1 -=- q
-              ||| 2 -=- q
-              ||| 3 -=- q))
+        anyo (equiv <@ 1 @> q
+              ||| equiv <@ 2 @> q
+              ||| equiv <@ 3 @> q))
     res =? [1; 3; 1; 2; 3]
 
 [<Fact>]
 let alwaysoTest() =
     let res = runEval 5 (fun x ->
-        (true -=- x ||| false -=- x)
+        (equiv <@ true @> x ||| equiv <@ false @> x)
         &&& alwayso
-        &&& false -=- x)
+        &&& equiv <@ false @> x)
     res =? [false; false; false; false; false]
 
 [<Fact>]
 let neveroTest() =
     let res = runEval 3 (fun q -> //more than 3 will diverge...
-        1 -=- q
+        equiv <@ 1 @> q
         ||| nevero
-        ||| 2 -=- q
+        ||| equiv <@ 2 @> q
         ||| nevero
-        ||| 3 -=- q) 
+        ||| equiv <@ 3 @> q) 
     res =? [1; 3; 2]
 
 [<Fact>]
@@ -172,11 +173,11 @@ let ``appendo finds correct number of prefix and postfix combinations``() =
 
 [<Fact>]
 let projectTest() = 
-    let res = runEval -1 (fun q -> 
+    let res = run -1 (fun q -> 
         let x = fresh()
-        5 -=- x
-        &&& (project x (fun xv -> xv*xv -=- q)))
-    [25] =? res
+        equiv <@ 5 @> x
+        &&& (project x (fun xv -> let prod = xv * xv in equiv <@ prod @> q)))
+    [ <@ 25 @> :> Expr] =? res
 
 [<Fact>]
 let copyTermTest() =
@@ -191,17 +192,17 @@ let copyTermTest() =
 [<Fact>]
 let ``conda commits to the first clause if its head succeeds``() =
     let res = runEval -1 (fun q ->
-        conda [ [ "olive" -=- q] 
-                [ "oil" -=- q]
+        conda [ [ equiv <@ "olive" @> q] 
+                [ equiv <@ "oil" @> q]
         ])
     res =? ["olive"]
 
 [<Fact>]
 let ``conda fails if a subsequent clause fails``() =
     let res = runEval -1 (fun q ->
-        conda [ [ "virgin" -=- q; equiv <@ false @> <@ true @>] 
-                [ "olive" -=- q] 
-                [ "oil" -=- q]
+        conda [ [ equiv <@ "virgin" @> q; equiv <@ false @> <@ true @>] 
+                [ equiv <@ "olive" @> q] 
+                [ equiv <@ "oil" @> q]
         ])
     res =? []
 
@@ -209,10 +210,10 @@ let ``conda fails if a subsequent clause fails``() =
 let ``conde succeeds each goal at most once``() =
     let res = runEval -1 (fun q ->
         condu [
-            [ false -=- <@ true @> ]
+            [ equiv <@ false @> <@ true @> ]
             [ alwayso ]
         ]
-        &&& true -=- q)
+        &&& equiv <@ true @> q)
     res =? [true]
 
 [<Fact>]
