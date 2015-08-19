@@ -109,6 +109,11 @@ module Goal =
         let gs = goals |> List.tail
         Goal <| fun a -> Stream.delay (fun () -> (Stream.bindMany (g a) gs))
 
+//TODO to make conde better:
+//    type Clause<'a> = Clause of 'a * list<'a>
+//
+//    let inline (<==) head rest = Clause (head, rest)
+
     let conde (goals:#seq<list<Goal>>) : Goal =
         Goal <| fun a -> 
             Stream.delay (fun () -> 
