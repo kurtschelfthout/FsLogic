@@ -1,62 +1,59 @@
-﻿module MiniKanren.Relations
+﻿namespace MiniKanren
 
-open Substitution
-open Goal
+module NumericLiteralZ =
+    open System
+    open Goal
 
-type Atom<'a> = Val of 'a | VarA with
-    static member Fresh() = VarA
-    interface IUnifiable with
-        member x.Unify(arg1: IUnifiable): Subst option = failwith "Not implemented yet"
-        member x.Var: VarName option = failwith "Not implemented yet"
-        member x.Walk: (IUnifiable list -> IUnifiable) * IUnifiable list = failwith "Not implemented yet"
-    
-type LList<'a> = Nil | Cons of 'a * LList<'a> | VarL with
-    static member Fresh() = VarL
-    static member ($)(a,l) = Cons (a,l)
-    //static member (++)(Cons (a,l),l2) = Cons (a,l2)
-    interface IUnifiable with
-        member x.Unify(arg1: IUnifiable): Subst option = failwith "Not implemented yet"
-        member x.Var: VarName option = failwith "Not implemented yet"
-        member x.Walk: (IUnifiable list -> IUnifiable) * IUnifiable list = failwith "Not implemented yet"
+    let FromZero() = prim 0
+    let FromOne() = prim 1
+    let FromInt32 (a:int) = prim a
+    let FromInt64 (a:int64) = prim (int a)
+    let FromString (s:string) = prim (Int32.Parse s)
 
-let (~+) a = Val a
+module Relations =
 
-///Tries goal an unbounded number of times.
-let rec anyo goal =
-    recurse (fun () -> goal ||| anyo goal)
+    open Substitution
+    open Goal
 
-///Goal that succeeds an unbounded number of times.
-let alwayso = anyo (equiv +true +true)
+    let True = prim true
+    let False = prim false
 
-///Goal that fails an unbounded number of times.
-let nevero = anyo (equiv +true +false)
+    ///Tries goal an unbounded number of times.
+    let rec anyo goal =
+        recurse (fun () -> goal ||| anyo goal)
 
-///Non-relational. The given goal succeeds at most once.
-let onceo goal = condu [ [ goal ] ]
+    ///Goal that succeeds an unbounded number of times.
+    let alwayso = anyo (True *=* True)
 
-//---lists----
+    ///Goal that fails an unbounded number of times.
+    let nevero = anyo (True *=* False)
 
-///Relates l with the empty lst.
-let emptyo l = equiv l Nil
+    ///Non-relational. The given goal succeeds at most once.
+    let onceo goal = condu [ [ goal ] ]
 
-///Relates h and t with the list l such that (h::t) = l.
-let conso h t (l:LList<'a>) = equiv (Cons (h,t)) l
+    //---lists----
 
-///Relates h with the list l such that (h::_) = l.
-let heado h l =
-    let t = fresh()
-    conso h t l
+    ///Relates l with the empty lst.
+    let emptyo l = equiv l nil
 
-///Relates t with the list l such that (_::t) = l.
-let inline tailo t l =
-    let h = fresh()
-    conso h t l
+    ///Relates h and t with the list l such that (h::t) = l.
+    let conso h t l = equiv (cons h t) l
 
-///Relates l,s and out so that l @ s = out
-let rec inline appendo l s out = 
-    emptyo l &&& equiv s out
-    ||| let a,d = fresh(),fresh() in
-        conso a d l
-        &&& let res = fresh() in
-            conso a res out
-            &&& recurse (fun () -> appendo d s res)
+    ///Relates h with the list l such that (h::_) = l.
+    let heado h l =
+        let t = fresh()
+        conso h t l
+
+    ///Relates t with the list l such that (_::t) = l.
+    let tailo t l =
+        let h = fresh()
+        conso h t l
+
+    ///Relates l,s and out so that l @ s = out
+    let rec appendo l s out = 
+        emptyo l &&& equiv s out
+        ||| let a,d = fresh(),fresh() in
+            conso a d l
+            &&& let res = fresh() in
+                conso a res out
+                &&& recurse (fun () -> appendo d s res)

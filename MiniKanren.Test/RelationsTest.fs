@@ -1,36 +1,25 @@
 ﻿
 module RelationsTest
 
+open MiniKanren
 open MiniKanren.Goal
 open MiniKanren.Substitution
 open MiniKanren.Relations
 open Xunit
 open Swensen.Unquote
-open Microsoft.FSharp.Quotations
-
-//from a quotation structured as let...in... get
-//the expression after the in. This makes it easier
-//to write a quotation that has unbound variables
-//which in turn we need to compare the results of some
-//tests.
-let rec getResult letExpr =
-    match letExpr with
-    | Patterns.Let (_,_,body) -> getResult body
-    | b -> b
 
 [<Fact>]
 let g0() = 
-    let goal (q:LVar<_>) = 
+    let goal q = 
         let x = fresh() 
-        //3 .Equiv x
-        equiv x <@ 3 @>
+        equiv x 3Z
         &&& equiv q x
-    let res = runEval -1 goal
+    let res = run -1 goal
     res =? [ 3 ]
 
 [<Fact>]
 let g1() = 
-    let res = runEval -1 (fun x ->  equiv x <@ 1 @>)
+    let res = run -1 (fun x ->  equiv x 1Z)
     res =? [ 1 ]
 
 [<Fact>]
@@ -38,19 +27,19 @@ let g2() =
     let res = 
         run -1 (fun q -> 
             let (x,y,z) = fresh(),fresh(),fresh()
-            equiv q <@ [%x; %y; %z; %x]  @>
-            ||| equiv q <@ [%z; %y; %x; %z] @>)
+            equiv q (ofList [x; y; z; x])
+            ||| equiv q (ofList [z; y; x; z]))
     2 =? res.Length
     //numbering restarts with each value
-    let expected = <@ let _0,_1,_2 =fresh(),fresh(),fresh() in [ _0;_1;_2;_0 ] @> |> getResult
+    let expected = <@ [ _0;_1;_2;_0 ] @> 
     sprintf "%A" [ expected; expected ] =? sprintf "%A" res
 
 [<Fact>]
 let g3() = 
     let res = 
-        runEval -1 (fun q -> 
+        run -1 (fun q -> 
             let y = fresh()
-            equiv y q &&& equiv <@ 3 @> y)
+            equiv y q &&& equiv 3Z y)
     res =? [3]
 
 [<Fact>]

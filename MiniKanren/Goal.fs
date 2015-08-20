@@ -18,90 +18,57 @@ module Goal =
 
     let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
 
-    //this is in two parts because the public function equiv needs
+    //this is in two parts because the public operator *=* needs
     //to take Expr<'a> for type inference. But really it can take
     //any Expr, not just the one with a generic type, and this is used
     //further down.
 
-    let private equivImpl (u:'a) (v:'a) : Goal =
+    let private equivImpl u v : Goal =
         Goal <| fun a -> 
             unify u v a
             |> Option.map Stream.unit
             |> Option.defaultTo Stream.mzero
 
-    let equiv (u:Expr<'a>) (v:Expr<'a>) : Goal =
-        equivImpl u v
+    type Term<'a> = { Uni : Uni } with
+        static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = equivImpl u v
+    
+    let cons0(f:'a) : int -> Term<'a> = 
+        fun n -> { Uni = Ctor (n,[]) } 
+    let cons1(f:'a -> 'b) : int -> Term<'a> -> Term<'b> = 
+        fun n { Uni = a } -> { Uni = Ctor (n,[a]) }
+    let cons2(f:'a -> 'b -> 'c ) : int -> Term<'a> -> Term<'b> -> Term<'c> = 
+        fun n { Uni = a } { Uni = b } ->{ Uni = Ctor (n,[a;b]) }
+    
+    let (<|>) a b = fun n -> (a n,b (n+1))
+    let datatype d = d 0
+    
+    let fresh() : Term<'a> = { Uni = Substitution.newVar() } 
+    let inline fresh2() = fresh(),fresh()
+    let inline fresh3() = fresh(),fresh(),fresh()
 
-//here are some experiments to make the interface to
-//unification a bit more palatable. With only the above,
-//all the values need to be manually quoted, and together with
-//splicing this makes the syntax quite heavy. (see further and tests for
-//examples).
+    //shortcut to say "don't care"
+    let __<'a> : Term<'a> = fresh()
 
-//The challenge is to make this work well for all combinations:
-// Expr<'a> + Expr<'a>
-// 'a + Expr<'a>
-// Expr<'a> + 'a
+    [<GeneralizableValue>]
+    let list<'a> : Term<'a list> * (Term<'a> -> Term<'a list> -> Term<'a list>)  = 
+            datatype (cons0 [] <|> cons2 (curry List.Cons))
 
-// This uses auto-quotation of method arguments. It works quite
-// well, in that it gets rid of all the quotes, but you need to splice
-// all variables. And sadly auto-quotation only works for methods, hence the
-// corny Uni.fy.
-//    type Uni private() =
-//        static member fy([<ReflectedDefinition>] u:Expr<'T>,[<ReflectedDefinition>] v:Expr<'T>) =
-//            equiv u v
+    let (nil,cons) = list<'a>
+    let ofList xs = xs |> List.fold (fun st e -> cons e st) nil
+    let prim (i:'a) : Term<'a> = { Uni = Prim i }
 
-// Interestingly, even writing the constraints down in runtime code is pretty
-// hard. I think this is probably too lenient a type. But worth a try.       
-//    let (-=-) (u:'a) (v:'b) =
-//// need two different types, 'a and 'b if one can be a value.
-//        let u',v' = box u,box v
-//        match (u',v') with
-//// hmm, how to write this?
-//        | (:? Expr as u), (:? Expr as v) -> equivImpl u v
-//        | (:? Expr as u), _ -> equivImpl u (upcast <@ v @>)
-//        | _, (:? Expr as v) -> equivImpl (<@ u @> :> Expr) v
-//        | _, _ -> equivImpl (<@ u @> :> Expr) (<@ v @> :> Expr)
+    type Tuples = Tuples with
+        static member ( *=* )(Tuples, a:Term<_>) = fun a' ->
+            a *=* a'
+        static member ( *=* )(Tuples, (a:Term<_>,b:Term<_>)) = fun (a',b') ->
+            a *=* a' &&& b *=* b'
+        static member ( *=* )(Tuples, (a:Term<_>,b:Term<_>,c:Term<_>)) = fun (a',b',c') ->
+            a *=* a' &&& b *=* b' &&& c *=* c'
+        //static member ( *=* )(Tuples, a:bool) = fun a' -> (prim a) *=* (prim true)
 
-// this extension method is relatively ok because you can now write
-// x .Equiv 3. or x .Equiv %y. It may be the best compromise. The downside
-// is that it makes unification syntactically assymetric. And the fact that
-// unification is symmetric is just one of its main selling points.
-//    type Microsoft.FSharp.Quotations.Expr<'T> with
-//        member x.Equiv([<ReflectedDefinition>]other:Expr<'T>) = equiv x other
-//     
-// this is to allow writing 3 .Equiv x, but it almost sorta doesnt work with
-// the above extension method, though I should experiment more.
-//    [<System.Runtime.CompilerServices.Extension>]  
-//    type Ext =
-//        [<System.Runtime.CompilerServices.Extension>]
-//        static member Equiv(x:'T,other:Expr<'T>) = 
-//            equiv <@ x @> other
-
-//this trick for unification overloading doesn't
-//really work well.
-//    type Equiv = Equiv with
-//        static member (-=-)(l, v) = 
-//            equiv l <@ v @>
-//        static member (-=-)(v, r) = 
-//            equiv <@ v @> r
-//        //static member (?<-)(Equiv, l:Quotations.Expr<'a>,r:Quotations.Expr<'a>) =
-        //    equiv l r
- 
-    //let inline (-=-) l r = Equiv.E(l, r)
-
-// Just some examples to play with things.
-//    let examples =
-//        let x,y = fresh2()
-//        Uni.fy( %x , 3 )
-//        &&& Uni.fy( [%x] , %y)
-//        &&& Uni.fy( [3;%x] , %y)
-
-        //x -=- y &&& <@ 3 @> -=- y
-        //Test.Equiv(6, 3)
-        //x.Equiv 3
-        //&&& 3.Equiv x
-        //&&& x.Equiv y
+    let inline ( *=* ) a b : Goal = (Tuples *=* a) b
+    
+    let inline equiv u v = u *=* v
 
     let all (Goals goals) : Goal =
         let g = goals |> List.head
@@ -157,38 +124,27 @@ module Goal =
             | Inc (Lazy s) -> take n s
             | Unit a -> [a]
             | Choice(a,f) ->  a :: take (n-1) f
-(*
-    let inline run n (f: _ -> Goal) =
+
+    let run n (f: _ -> Goal) =
         Stream.delay (fun () -> let x = fresh()
-                                (Goal.Subst (f x) Map.empty) >>= (reify x >> Stream.unit))
+                                (Goal.Subst (f x) Map.empty) >>= (reify x.Uni >> Stream.unit))
         |> take n
 
-    let inline runEval n (f: _ -> Goal) =
-        run n f
-        |> List.map Swensen.Unquote.Operators.evalRaw
-
-    let inline runShow n (f: _ -> Goal) =
-        run n f
-        |> Seq.map Swensen.Unquote.Operators.decompile
-        |> String.concat Environment.NewLine
-
     //impure operators
-    let project (v:Expr<'a>) (f:'a -> Goal) : Goal =
+    let project ({ Uni = v}:Term<'a>) (f:'a -> Goal) : Goal =
         Goal <| fun s -> 
-            //assume atom here..otherwise fail
-            let x = walkMany v s
-            Goal.Subst (f (Swensen.Unquote.Operators.evalRaw x)) s
+            //assume atom here..otherwise fail...TODO: convert back to actual type first!
+            let (Prim x) = walkMany v s
+            Goal.Subst (f x) s
 
     let copyTerm u v : Goal =
-        let rec buildSubst u s : Subst=
+        let rec buildSubst s u : Subst =
             match u with
             | LVar (Find s _) -> s
-            | LVar u -> Map.add u (upcast fresh()) s
-            | Patterns.NewUnionCase (_, exprs)
-            | Patterns.NewTuple exprs -> 
-                List.fold (fun s expr -> buildSubst expr s) s exprs
+            | LVar u -> Map.add u (newVar()) s
+            | Ctor (_, exprs) -> List.fold buildSubst s exprs
             | _ -> s
         Goal <| fun s ->
             let u = walkMany u s
-            Goal.Subst (equivImpl (walkMany u (buildSubst u Map.empty)) v) s
-*)    
+            Goal.Subst (equivImpl (walkMany u (buildSubst Map.empty u)) v) s
+    

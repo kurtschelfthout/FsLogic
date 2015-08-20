@@ -2,6 +2,7 @@
 
 open Substitution
 open Goal
+open Relations
 
 //let buildNumber n =
 //    let (|Even|_|) n = if n % 2 = 0 then Some n else None
@@ -15,13 +16,13 @@ open Goal
 //    r
 
 let poso n = 
-    equiv n <@ %__()::%__() @>
+    equiv n (cons __ __)
 
 let ``>1o`` n =
-    equiv n <@ %__()::%__()::%__() @>
+    equiv n (cons __ (cons __ __))
 
 let private truthTable x y r =
-    List.map (fun (a,b,c) -> [equiv <@ %x,%y,%r @> <@ a,b,c @>])
+    List.map (fun (a,b,c) -> [ (x,y,r) *=* (prim a, prim b, prim c)])
     >> conde
 
 let bitAndo x y r =
@@ -52,31 +53,34 @@ let fullAddero b x y r c =
 ///on all the heads of a given list; joining them in a conde.
 let matche pat (goals:(_ * Goal list) list) = 
     goals
-    |> List.map (fun (h,l) -> equiv pat h :: l)
+    |> List.map (fun (h,l) -> (pat *=* h) :: l)
     |> conde
 
 let rec addero d n m r : Goal =
+    let p = prim
+    let l1l = cons 1Z nil //[1]
     recurse (fun () -> 
-    matche <@ %d,%n,%m @> 
-        [ <@ (0    , %__(), []    ) @>, [equiv n r]
-          <@ (0    , []   , %__() ) @>, [equiv m r; poso m]
-          <@ (1    , %__(), []    ) @>, [addero <@ 0 @> n <@ [1] @> r]
-          <@ (1    , []   , %__() ) @>, [poso m; addero <@ 0 @> <@ [1] @> m r]
-          <@ (%__(), [1]  , [1]   ) @>, (let a,c = fresh2() in [equiv <@ [%a; %c] @> r; fullAddero d <@ 1 @> <@ 1 @> a c ])
-          <@ (%__(), [1]  , %__() ) @>, [genAddero d n m r]
-          <@ (%__(), %__(), [1]   ) @>, [``>1o`` n; ``>1o`` r; addero d <@ [1] @> n r]
-          <@ (%__(), %__(), %__() ) @>, [``>1o`` n; genAddero d n m r]
+    matche (d,n,m)
+        [ (0Z  , __, nil    ) , [equiv n r]
+          (0Z  , nil   , __ ) , [equiv m r; poso m]
+          (1Z  , __, nil    ) , [addero 0Z n l1l r]
+          (1Z  , nil   , __ ) , [poso m; addero 0Z l1l m r]
+          (__  , l1l  , l1l) , (let a,c = fresh2() in [equiv (cons a (cons c nil)) r; fullAddero d 1Z 1Z a c ])
+          (__  , l1l  , __ ) , [genAddero d n m r]
+          (__  , __, l1l   ) , [``>1o`` n; ``>1o`` r; addero d l1l n r]
+          (__  , __, __ )    , [``>1o`` n; genAddero d n m r]
         ])
+
 and genAddero d n m r =
     let a,b,c = fresh3()
     let x,y,z = fresh3()
     let e = fresh()
-    all [ equiv <@ %n, %m, %r @> <@ %a::%x, %b::%y, %c::%z @>
+    all [ (n, m, r) *=* (cons a x, cons b y, cons c z)
           poso y; poso z
           fullAddero d a b c e
           addero e x y z ]
 
-let pluso n m k : Goal = addero <@ 0 @> n m k
+let pluso n m k : Goal = addero 0Z n m k
 
 
     
