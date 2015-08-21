@@ -6,6 +6,11 @@ module internal Option =
         | None -> a
         | Some a -> a
 
+    let getOrFail s opt =
+        match opt with
+        | None -> failwith s
+        | Some v -> v
+
 [<AutoOpen>]
 module internal Util =  
     let flip f = fun b a -> f a b   

@@ -15,18 +15,18 @@ module Relations =
     open Substitution
     open Goal
 
-    let True = prim true
-    let False = prim false
+//    let True = ~~true
+//    let False = ~~false
 
     ///Tries goal an unbounded number of times.
     let rec anyo goal =
         recurse (fun () -> goal ||| anyo goal)
 
     ///Goal that succeeds an unbounded number of times.
-    let alwayso = anyo (True *=* True)
+    let alwayso = anyo succeed
 
     ///Goal that fails an unbounded number of times.
-    let nevero = anyo (True *=* False)
+    let nevero = anyo fail
 
     ///Non-relational. The given goal succeeds at most once.
     let onceo goal = condu [ [ goal ] ]

@@ -56,8 +56,8 @@ let ``unifying head of list with variable should extend substitution``() =
 let ``unifying tail of list with variable should extend substitution``() =
     let (LVar aName) as a = newVar()
     let expected = [ (aName, list2 (Prim 1,Prim 2)) ] |> Map.ofList
-    unify (list2 (Prim 3,a)) (cons (Prim 3) (list2 (Prim 1, Prim 2))) Map.empty =? Some expected
-    unify (cons (Prim 3) (list2 (Prim 1, Prim 2))) (list2 (Prim 3,a)) Map.empty =? Some expected
+    unify (cons (Prim 3) a) (cons (Prim 3) (list2 (Prim 1, Prim 2))) Map.empty =? Some expected
+    unify (cons (Prim 3) (list2 (Prim 1, Prim 2))) (cons (Prim 3) a) Map.empty =? Some expected
 
 [<Fact>]
 let ``unifying element of tuple with variable should extend substitution``() =

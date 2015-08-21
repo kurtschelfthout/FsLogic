@@ -61,14 +61,14 @@ let rec addero d n m r : Goal =
     let l1l = cons 1Z nil //[1]
     recurse (fun () -> 
     matche (d,n,m)
-        [ (0Z  , __, nil    ) , [equiv n r]
-          (0Z  , nil   , __ ) , [equiv m r; poso m]
-          (1Z  , __, nil    ) , [addero 0Z n l1l r]
-          (1Z  , nil   , __ ) , [poso m; addero 0Z l1l m r]
-          (__  , l1l  , l1l) , (let a,c = fresh2() in [equiv (cons a (cons c nil)) r; fullAddero d 1Z 1Z a c ])
-          (__  , l1l  , __ ) , [genAddero d n m r]
-          (__  , __, l1l   ) , [``>1o`` n; ``>1o`` r; addero d l1l n r]
-          (__  , __, __ )    , [``>1o`` n; genAddero d n m r]
+        [ (0Z  , __ , nil) , [equiv n r]
+          (0Z  , nil, __ ) , [equiv m r; poso m]
+          (1Z  , __ , nil) , [addero 0Z n l1l r]
+          (1Z  , nil, __ ) , [poso m; addero 0Z l1l m r]
+          (__  , l1l, l1l) , (let a,c = fresh2() in [equiv (cons a (cons c nil)) r; fullAddero d 1Z 1Z a c ])
+          (__  , l1l, __ ) , [genAddero d n m r]
+          (__  , __ , l1l) , [``>1o`` n; ``>1o`` r; addero d l1l n r]
+          (__  , __ , __ ) , [``>1o`` n; genAddero d n m r]
         ])
 
 and genAddero d n m r =

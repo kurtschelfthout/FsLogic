@@ -18,6 +18,9 @@ module Goal =
 
     let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
 
+    let fail = Goal (fun _ -> Stream.mzero)
+    let succeed = Goal Stream.unit 
+
     //this is in two parts because the public operator *=* needs
     //to take Expr<'a> for type inference. But really it can take
     //any Expr, not just the one with a generic type, and this is used
@@ -29,46 +32,71 @@ module Goal =
             |> Option.map Stream.unit
             |> Option.defaultTo Stream.mzero
 
-    type Term<'a> = { Uni : Uni } with
+    type Term<'a> = { Uni : Uni
+                      Project: Uni -> 'a option
+                    } with
         static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = equivImpl u v
     
-    let cons0(f:'a) : int -> Term<'a> = 
-        fun n -> { Uni = Ctor (n,[]) } 
-    let cons1(f:'a -> 'b) : int -> Term<'a> -> Term<'b> = 
-        fun n { Uni = a } -> { Uni = Ctor (n,[a]) }
-    let cons2(f:'a -> 'b -> 'c ) : int -> Term<'a> -> Term<'b> -> Term<'c> = 
-        fun n { Uni = a } { Uni = b } ->{ Uni = Ctor (n,[a;b]) }
     
-    let (<|>) a b = fun n -> (a n,b (n+1))
-    let datatype d = d 0
     
-    let fresh() : Term<'a> = { Uni = Substitution.newVar() } 
+    let fresh : unit -> Term<'a> = 
+        let none = fun _ -> None
+        fun () -> { Uni = Substitution.newVar(); Project=none }
+         
     let inline fresh2() = fresh(),fresh()
     let inline fresh3() = fresh(),fresh(),fresh()
 
     //shortcut to say "don't care"
     let __<'a> : Term<'a> = fresh()
 
-    [<GeneralizableValue>]
-    let list<'a> : Term<'a list> * (Term<'a> -> Term<'a list> -> Term<'a list>)  = 
-            datatype (cons0 [] <|> cons2 (curry List.Cons))
+//    [<GeneralizableValue>]
+//    let list<'a> : Term<'a list> * (Term<'a> -> Term<'a list> -> Term<'a list>)  = 
+//            datatype (cons0 [] <|> cons2 (curry List.Cons))
 
-    let (nil,cons) = list<'a>
+    let private nilProj uni = match uni with Ctor (0,[]) -> Some [] | _ -> None
+    let nil = { Uni = Ctor (0,[])
+                Project = nilProj }
+
+    let private consProj (projectx:Uni -> 'a option) (projectxs:Uni -> option<'a list>) uni = 
+        match uni with 
+        | Ctor(1, [x;xs]) -> 
+            projectx x
+            |> Option.bind (fun x -> projectxs xs |> Option.map (fun xs -> (x :: xs)))
+        | _ -> None
+    let cons (x:Term<'a>) (xs:Term<'a list>) = 
+        { Uni = Ctor (1, [x.Uni; xs.Uni])
+          Project = consProj x.Project xs.Project}
+
     let ofList xs = xs |> List.fold (fun st e -> cons e st) nil
-    let prim (i:'a) : Term<'a> = { Uni = Prim i }
 
-    type Tuples = Tuples with
-        static member ( *=* )(Tuples, a:Term<_>) = fun a' ->
+    //i is passed in as a convenient way to pass the 'a type, its value is not used.
+    let private primProj (i:'a) uni =
+        match uni with
+        | (Prim (:? 'a as i)) -> Some i
+        | _ -> None
+    let prim (i:'a) : Term<'a> = { Uni = Prim i
+                                   Project = primProj i
+                                 }
+    let inline (~~) i  = prim i
+
+    type Unifiable = Unifiable with
+        static member inline Unify(a:Term<_>, a') =
             a *=* a'
-        static member ( *=* )(Tuples, (a:Term<_>,b:Term<_>)) = fun (a',b') ->
+        static member inline Unify((a:Term<_>,b:Term<_>), (a',b')) =
             a *=* a' &&& b *=* b'
-        static member ( *=* )(Tuples, (a:Term<_>,b:Term<_>,c:Term<_>)) = fun (a',b',c') ->
+        static member inline Unify((a:Term<_>,b:Term<_>,c:Term<_>), (a',b',c')) =
             a *=* a' &&& b *=* b' &&& c *=* c'
-        //static member ( *=* )(Tuples, a:bool) = fun a' -> (prim a) *=* (prim true)
+        //Trick: if we want to add another overload, say bool and bool,
+        //we need to add at least a second one - otherwise the compiler
+        //will not generalize the types. E.g. the below dummy one will do.
+        //static member Unify(Unifiable, Unifiable) = succeed
 
-    let inline ( *=* ) a b : Goal = (Tuples *=* a) b
-    
-    let inline equiv u v = u *=* v
+    let inline equiv u v =
+        let inline call (t:^t) (a:^a) (b:^b) =
+             ((^t or ^a):(static member Unify: ^a * ^a -> Goal)(a,b))
+        call Unifiable u v
+
+    let inline ( *=* ) a b : Goal =  equiv a b
 
     let all (Goals goals) : Goal =
         let g = goals |> List.head
@@ -126,16 +154,19 @@ module Goal =
             | Choice(a,f) ->  a :: take (n-1) f
 
     let run n (f: _ -> Goal) =
-        Stream.delay (fun () -> let x = fresh()
-                                (Goal.Subst (f x) Map.empty) >>= (reify x.Uni >> Stream.unit))
+        Stream.delay (fun () -> 
+            let x = fresh()
+            let result = Goal.Subst (f x) Map.empty
+            result >>= (reify x.Uni >> Stream.unit))
         |> take n
 
     //impure operators
-    let project ({ Uni = v}:Term<'a>) (f:'a -> Goal) : Goal =
+    let project ({ Uni = v } as tv:Term<'a>) (f:'a -> Goal) : Goal =
         Goal <| fun s -> 
-            //assume atom here..otherwise fail...TODO: convert back to actual type first!
-            let (Prim x) = walkMany v s
-            Goal.Subst (f x) s
+            //assume atom here..otherwise fail...
+            match walkMany v s |> tv.Project with
+            | Some x -> Goal.Subst (f x) s
+            | None -> failwithf "project: value is not of type %s" typeof<'a>.Name
 
     let copyTerm u v : Goal =
         let rec buildSubst s u : Subst =

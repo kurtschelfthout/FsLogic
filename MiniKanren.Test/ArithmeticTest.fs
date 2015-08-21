@@ -6,19 +6,19 @@ open MiniKanren.Substitution
 open MiniKanren.Goal
 open MiniKanren.Arithmetic
 open Microsoft.FSharp.Quotations
-
+(*
 [<Fact>]
 let xor() =
     let res = run -1 (fun q ->
         let x,y,r = fresh3()
         bitXoro x y r
-        &&& equiv q <@ %x, %y, %r @>
+        &&& q *=* MiniKanren.Goal.ofList [x; y; r]
     )
     res =? [0,0,0
             1,1,0
             1,0,1
             0,1,1
-            ]
+            ] 
 
 [<Fact>]
 let ``and``() =
@@ -132,3 +132,4 @@ let ``2+?=5``() =
 let ``generate numbers addition``() =
     let res = run 9  (fun q -> let x,y,z = fresh3() in pluso x y z &&& equiv <@ %x,%y,%z @> q)
     printf "%s" res
+*)
