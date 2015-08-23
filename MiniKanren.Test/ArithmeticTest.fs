@@ -15,7 +15,7 @@ let xor() =
         bitXoro x y r
         &&& q *=* ~~(x, y, r)
     )
-    res =?([0,0,0
+    res =!([0,0,0
             1,1,0
             1,0,1
             0,1,1
@@ -28,7 +28,7 @@ let ``and``() =
         bitAndo x y r
         &&& equiv q ~~(x, y, r)
     )
-    res =? ([0,0,0
+    res =! ([0,0,0
              1,1,1
              0,1,0
              1,0,0
@@ -37,22 +37,22 @@ let ``and``() =
 [<Fact>]
 let ``poso fails for 0``() =
     let res = run -1 (fun q -> poso nil)
-    res =? []    
+    res =! []    
     
 [<Fact>]
 let ``poso succeeds for 1``() =
     let res = run -1 (fun q -> poso ~~[1Z])
-    res.Length =? 1
+    res.Length =! 1
 
 [<Fact>]
 let ``>1o fails for 0 and 1``() =
     let res = run -1 (fun q -> ``>1o`` nil ||| ``>1o`` ~~[1Z])
-    res =? []    
+    res =! []    
     
 [<Fact>]
 let ``>1o succeeds for 2``() =
     let res = run -1 (fun q -> ``>1o`` ~~[0Z;1Z])
-    res.Length =? 1
+    res.Length =! 1
 
 [<Fact>]
 let halfAdder() =
@@ -61,7 +61,7 @@ let halfAdder() =
         halfAddero x y r c
         &&& q *=* ~~(x, y, r, c)
     )
-    res.Length =? 4
+    res.Length =! 4
     test <@ res |> List.forall (fun (Some (x,y,r,c)) -> x + y = r + 2*c) @>
 
 //TODO
@@ -72,63 +72,63 @@ let halfAdder() =
 //        fullAddero b x y r c
 //        &&& equiv q <@ %b, %x, %y, %r, %c @>
 //    )
-//    res.Length =? 8
+//    res.Length =! 8
 //    test <@ res |> List.forall (fun (b,x,y,r,c) -> b + x + y = r + 2*c) @>
 
 [<Fact>]    
 let ``0+1=1``() =
     let res = run -1 (fun q -> pluso nil ~~[1] q)
-    res =? [Some [1]]
+    res =! [Some [1]]
 
 [<Fact>]    
 let ``1+0=1``() =
     let res = run -1 (fun q -> pluso ~~[1] nil q)
-    res =? [Some [1]]
+    res =! [Some [1]]
 
 [<Fact>]    
 let ``1+1=2``() =
     let res = run -1 (fun q -> pluso ~~[1] ~~[1] q)
-    res =? [Some [0;1]]
+    res =! [Some [0;1]]
 
 [<Fact>]    
 let ``1+2=3``() =
     let res = run -1 (fun q -> pluso ~~[1] ~~[0;1] q)
-    res =? [Some [1;1]]
+    res =! [Some [1;1]]
 
 [<Fact>]    
 let ``2+1=3``() =
     let res = run -1 (fun q -> pluso ~~[0;1] ~~[1] q)
-    res =? [Some [1;1]]
+    res =! [Some [1;1]]
 
 [<Fact>]    
 let ``2+2=4``() =
     let res = run -1 (fun q -> pluso ~~[0;1] ~~[0;1] q)
-    res =? [Some [0;0;1]]
+    res =! [Some [0;0;1]]
 
 [<Fact>]    
 let ``2+3=5``() =
     let res = run -1 (fun q -> pluso ~~[0;1] ~~[1;1] q)
-    res =? [Some [1;0;1]]
+    res =! [Some [1;0;1]]
 
 [<Fact>]    
 let ``3+2=5``() =
     let res = run -1 (fun q -> pluso ~~[1;1] ~~[0;1] q)
-    res =? [Some [1;0;1]]
+    res =! [Some [1;0;1]]
 
 [<Fact>]    
 let ``3+3=6``() =
     let res = run -1 (fun q -> pluso ~~[1;1] ~~[1;1] q)
-    res =? [Some [0;1;1]]
+    res =! [Some [0;1;1]]
 
 [<Fact>]    
 let ``3+6=9``() =
     let res = run -1 (fun q -> pluso ~~[1;1] ~~[0;1;1] q)
-    res =? [Some [1;0;0;1]]
+    res =! [Some [1;0;0;1]]
 
 [<Fact>]
 let ``2+?=5``() =
     let res = run -1 (fun q -> pluso ~~[0;1] q ~~[1;0;1])
-    res =? [Some [1;1]]
+    res =! [Some [1;1]]
 
 [<Fact>]
 let ``generate numbers addition``() =

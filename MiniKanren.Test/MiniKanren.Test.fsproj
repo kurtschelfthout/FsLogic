@@ -48,7 +48,8 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="Unquote">
-      <HintPath>..\lib\Unquote.dll</HintPath>
+      <HintPath>..\packages\Unquote.3.0.0\lib\net45\Unquote.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="xunit">
       <HintPath>..\packages\xunit.1.9.2\lib\net20\xunit.dll</HintPath>
