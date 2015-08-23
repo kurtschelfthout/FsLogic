@@ -19,10 +19,21 @@ let nextId =
     let varcount = ref 0
     fun () -> Interlocked.Increment(varcount) * 1<id> : VarId
 
+[<CustomEquality; NoComparison>]
 type Uni = 
     | LVar of VarId
-    | Ctor of int * list<Uni>
-    | Prim of obj
+    | Ctor of (list<Uni> -> obj option) * int * list<Uni>
+    | Prim of obj with
+    override t.Equals(other) =
+        match other with
+        | :? Uni as other ->
+            match (t,other) with
+            | (LVar i, LVar j) -> i = j
+            | (Ctor (_, p1, i1), Ctor (_, p2,i2)) -> p1 = p2 && i1 = i2
+            | (Prim o1, Prim o2) -> o1 = o2
+            | _ -> false
+        | _ -> false
+
 
 let newVar() = LVar <| nextId()
 
@@ -45,7 +56,7 @@ let rec occurs id v s =
     let vs = walk v s
     match vs with
     | LVar id' -> id'.Equals(id)
-    | Ctor (_,fields) -> Seq.exists (fun exp -> occurs id exp s) fields
+    | Ctor (_,_,fields) -> Seq.exists (fun exp -> occurs id exp s) fields
     | Prim _ -> false
 
 ///Calls extNoCheck only if the occurs call succeeds.
@@ -70,7 +81,7 @@ let rec unify u v s =
     | LVar u, _ -> ext u v s
     | _, LVar v -> ext v u s
     | Prim u, Prim v when u = v -> Some s
-    | Ctor (i,ufields), Ctor (j,vfields) when i = j ->  unifySubExprs ufields vfields
+    | Ctor (_,i,ufields), Ctor (_,j,vfields) when i = j ->  unifySubExprs ufields vfields
     | _ -> None
 
 ///Like walk, but also replaces any variables that are bound in the substitution deep
@@ -78,7 +89,7 @@ let rec unify u v s =
 let rec walkMany v s =
     let v = walk v s
     match v with
-    | Ctor (i,exprs) -> exprs |> List.map (fun e -> walkMany e s) |> (curry Ctor) i
+    | Ctor (f,i,exprs) -> exprs |> List.map (fun e -> walkMany e s) |> (fun es -> Ctor(f,i,es))
     | _ -> v
 
 //Renumber all remaining variables in an expression with names in increasing order.
@@ -86,7 +97,7 @@ let rec reifyS v s =
     let v = walk v s
     match v with
     | LVar v' -> extNoCheck (s.Count * 1<id>) v s
-    | Ctor (i,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
+    | Ctor (_,i,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
     | _ -> s
 
 let reify v s =

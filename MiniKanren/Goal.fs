@@ -6,6 +6,7 @@ module Goal =
     open MiniKanren
     open System
     open Microsoft.FSharp.Quotations
+    open System.Reflection
 
     ///A goal is a function that maps a substitution to an
     ///ordered sequence of zero or more values.
@@ -32,16 +33,12 @@ module Goal =
             |> Option.map Stream.unit
             |> Option.defaultTo Stream.mzero
 
-    type Term<'a> = { Uni : Uni
-                      Project: Uni -> 'a option
-                    } with
+    type Term<'a> = { Uni : Uni } with
         static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = equivImpl u v
-    
-    
     
     let fresh : unit -> Term<'a> = 
         let none = fun _ -> None
-        fun () -> { Uni = Substitution.newVar(); Project=none }
+        fun () -> { Uni = Substitution.newVar() }
          
     let inline fresh2() = fresh(),fresh()
     let inline fresh3() = fresh(),fresh(),fresh()
@@ -49,31 +46,45 @@ module Goal =
     //shortcut to say "don't care"
     let __<'a> : Term<'a> = fresh()
 
-    let private nilProj uni = match uni with Ctor (0,[]) -> Some [] | _ -> None
-    let nil = { Uni = Ctor (0,[])
-                Project = nilProj }
+    let private nilProj typex = 
+        let emptyMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("get_Empty")
+        let nil = Some <| emptyMethod.Invoke(null, [||])
+        fun _ -> nil
+    [<GeneralizableValue>]
+    let nil<'a> : Term<'a list> = { Uni = Ctor (nilProj typeof<'a>,0,[]) }
 
-    let private consProj (projectx:Uni -> 'a option) (projectxs:Uni -> option<'a list>) uni = 
-        match uni with 
-        | Ctor(1, [x;xs]) -> 
-            projectx x
-            |> Option.bind (fun x -> projectxs xs |> Option.map (fun xs -> (x :: xs)))
-        | _ -> None
-    let cons (x:Term<'a>) (xs:Term<'a list>) = 
-        { Uni = Ctor (1, [x.Uni; xs.Uni])
-          Project = consProj x.Project xs.Project}
+    let private tryProject = function
+        | (LVar _) -> None
+        | (Ctor (p,_,args)) -> p args
+        | Prim o -> Some o
 
-    let ofList xs = xs |> List.fold (fun st e -> cons e st) nil
+    let private consProj typex = 
+        let consMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("Cons")
+        let cons x xs = consMethod.Invoke(null, [|x;xs|])
+        fun uni ->
+            match uni with 
+            | [x;xs] -> 
+                tryProject x
+                |> Option.bind (fun x -> tryProject xs |> Option.map (fun xs -> cons x xs))
+            | _ -> None
+    let cons (x:Term<'a>) (xs:Term<'a list>) : Term<'a list> = 
+        { Uni = Ctor (consProj typeof<'a>, 1, [x.Uni; xs.Uni]) }
+       
+    let tupProj typea typeb =
+        let ctorMethod = typedefof<_ * _>.MakeGenericType([|typea;typeb|]).GetConstructor([|typea;typeb|])
+        let create x y = ctorMethod.Invoke([|x;y|])
+        fun uni ->
+            let projunis = uni |> List.map tryProject
+            match projunis with
+            | [Some a;Some b] -> Some (create a b)
+            | _ -> None
+    let tup (x:Term<'a>,y:Term<'b>) : Term<'a*'b> =
+        { Uni = Ctor (tupProj typeof<'a> typeof<'b>, 2, [x.Uni;y.Uni])}   
 
-    //i is passed in as a convenient way to pass the 'a type, its value is not used.
-    let private primProj (i:'a) uni =
-        match uni with
-        | (Prim (:? 'a as i)) -> Some i
-        | _ -> None
-    let prim (i:'a) : Term<'a> = { Uni = Prim i
-                                   Project = primProj i
-                                 }
-    let inline (~~) i  = prim i
+    let ofList xs = List.foldBack (fun e st -> cons e st) xs nil
+
+    let prim (i:'a) : Term<'a> = { Uni = Prim i }
+//    let inline (~~) i  = prim i
 
     type Unifiable = Unifiable with
         static member inline Unify(a:Term<_>, a') =
@@ -86,6 +97,17 @@ module Goal =
         //we need to add at least a second one - otherwise the compiler
         //will not generalize the types. E.g. the below dummy one will do.
         //static member Unify(Unifiable, Unifiable) = succeed
+
+        static member Create(b:bool) = prim b
+        static member Create(b:int) = prim b
+        static member Create(b:string) = prim b
+        static member Create(xs:list<Term<'a>>) = ofList xs
+        static member Create((a:Term<'a>,b:Term<'b>)) = tup (a,b)
+
+    let inline (~~) i : Term<'r> =
+        let inline call (t:^t) (a:^a) (r:^b) =
+             ((^t or ^a):(static member Create: ^a -> ^b)(a))
+        call Unifiable i Unchecked.defaultof<Term<'r>>
 
     let inline equiv u v =
         let inline call (t:^t) (a:^a) (b:^a) =
@@ -149,19 +171,31 @@ module Goal =
             | Unit a -> [a]
             | Choice(a,f) ->  a :: take (n-1) f
 
-    let run n (f: _ -> Goal) =
+//    let rec takeSeq f =
+//        seq { match f with
+//              | MZero -> ()
+//              | Inc (Lazy s) -> yield! takeSeq s
+//              | Unit a -> yield a
+//              | Choice(a,f) ->  yield a; yield! takeSeq f
+//            }
+
+    let run n (f: Term<'a> -> Goal) =
         Stream.delay (fun () -> 
             let x = fresh()
             let result = Goal.Subst (f x) Map.empty
             result >>= (reify x.Uni >> Stream.unit))
         |> take n
+        |> List.map tryProject
+        |> List.map (Option.map (fun a -> unbox<'a> a))
+//        |> (if n>0 then Seq.take n else (fun x -> x))
+//        |> Seq.toList
 
     //impure operators
     let project ({ Uni = v } as tv:Term<'a>) (f:'a -> Goal) : Goal =
         Goal <| fun s -> 
             //assume atom here..otherwise fail...
-            match walkMany v s |> tv.Project with
-            | Some x -> Goal.Subst (f x) s
+            match walkMany v s |> tryProject with
+            | Some x -> Goal.Subst (f (unbox x)) s
             | None -> failwithf "project: value is not of type %s" typeof<'a>.Name
 
     let copyTerm u v : Goal =
@@ -169,7 +203,7 @@ module Goal =
             match u with
             | LVar (Find s _) -> s
             | LVar u -> Map.add u (newVar()) s
-            | Ctor (_, exprs) -> List.fold buildSubst s exprs
+            | Ctor (_, _, exprs) -> List.fold buildSubst s exprs
             | _ -> s
         Goal <| fun s ->
             let u = walkMany u s

@@ -42,8 +42,9 @@ let ``unifying different values should fail``() =
 let ``unifying same values should succeed without extending substitution``() =
     unify zero zero Map.empty =? Some Map.empty
 
-let nil = Ctor (0,[])
-let cons x xs = Ctor (1,[x;xs])
+let nil = Ctor ((fun _ -> None),0,[])
+let private consProj : Uni list -> obj option = (fun _ -> None)
+let cons x xs = Ctor (consProj,1,[x;xs])
 let list2 (x,y) = cons x (cons y nil)
 [<Fact>]
 let ``unifying head of list with variable should extend substitution``() =

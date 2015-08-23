@@ -15,9 +15,6 @@ module Relations =
     open Substitution
     open Goal
 
-//    let True = ~~true
-//    let False = ~~false
-
     ///Tries goal an unbounded number of times.
     let rec anyo goal =
         recurse (fun () -> goal ||| anyo goal)
