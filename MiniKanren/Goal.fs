@@ -49,10 +49,6 @@ module Goal =
     //shortcut to say "don't care"
     let __<'a> : Term<'a> = fresh()
 
-//    [<GeneralizableValue>]
-//    let list<'a> : Term<'a list> * (Term<'a> -> Term<'a list> -> Term<'a list>)  = 
-//            datatype (cons0 [] <|> cons2 (curry List.Cons))
-
     let private nilProj uni = match uni with Ctor (0,[]) -> Some [] | _ -> None
     let nil = { Uni = Ctor (0,[])
                 Project = nilProj }
@@ -92,7 +88,7 @@ module Goal =
         //static member Unify(Unifiable, Unifiable) = succeed
 
     let inline equiv u v =
-        let inline call (t:^t) (a:^a) (b:^b) =
+        let inline call (t:^t) (a:^a) (b:^a) =
              ((^t or ^a):(static member Unify: ^a * ^a -> Goal)(a,b))
         call Unifiable u v
 
