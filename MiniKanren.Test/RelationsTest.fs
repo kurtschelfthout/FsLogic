@@ -27,7 +27,7 @@ let g1() =
 let g2() = 
     let res = 
         run -1 (fun q -> 
-            let (x,y,z) = fresh(),fresh(),fresh()
+            let (x,y,z) = fresh()
             equiv q (ofList [x; y; z; x])
             ||| equiv q (ofList [z; y; x; z]))
     2 =? res.Length
@@ -48,7 +48,7 @@ let g3() =
 let g4() = 
     let res = 
         run -1 (fun q -> 
-            let x,y,z = fresh3()
+            let x,y,z = fresh()
             ofList [x; y] *=* q
             ||| ofList [y; y] *=* q)
     2 =? res.Length
@@ -130,7 +130,7 @@ let ``conso finds correct result``() =
 [<Fact>]
 let ``conso finds correct combination of head and tail``() =
     let res = run -1 (fun q ->
-        let h,t = fresh2()
+        let h,t = fresh()
         conso h t ~~[1Z;2Z;3Z]
         &&& ~~(h,t) *=* q
     )
@@ -155,7 +155,7 @@ let ``appendo finds empty postfix``() =
 [<Fact>]
 let ``appendo finds correct number of prefix and postfix combinations``() =
     let res = run -1 (fun q -> 
-        let l,s = fresh2()
+        let l,s = fresh()
         appendo l s ~~[1Z; 2Z; 3Z]
         &&& ~~(l, s) *=* q)
     res =? ([ [], [1;2;3]
@@ -172,6 +172,7 @@ let projectTest() =
         &&& (project x (fun xv -> let prod = xv * xv in ~~prod *=* q)))
     [ Some 25 ] =? res
 
+//TODO
 //[<Fact>]
 //let copyTermTest() =
 //    let g = run -1 (fun q ->

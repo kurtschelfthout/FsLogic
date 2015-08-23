@@ -10,7 +10,7 @@ open System.Threading
 ///would introduce a circularity. This is
 ///an expensive check so is turned off by
 ///default.
-let mutable occursCheck = false
+let mutable occursCheck = true
 
 type [<Measure>] id
 type VarId = int<id>

@@ -44,7 +44,7 @@ let halfAddero x y r c =
     &&& bitAndo x y c
 
 let fullAddero b x y r c =
-    let (w,xy,wz) = fresh3()
+    let (w,xy,wz) = fresh()
     all [ halfAddero x y w xy
           halfAddero w b r wz
           bitXoro xy wz c ]
@@ -65,15 +65,15 @@ let rec addero d n m r : Goal =
           (0Z  , nil, __ ) , [equiv m r; poso m]
           (1Z  , __ , nil) , [addero 0Z n l1l r]
           (1Z  , nil, __ ) , [poso m; addero 0Z l1l m r]
-          (__  , l1l, l1l) , (let a,c = fresh2() in [equiv (cons a (cons c nil)) r; fullAddero d 1Z 1Z a c ])
+          (__  , l1l, l1l) , (let a,c = fresh() in [equiv (cons a (cons c nil)) r; fullAddero d 1Z 1Z a c ])
           (__  , l1l, __ ) , [genAddero d n m r]
           (__  , __ , l1l) , [``>1o`` n; ``>1o`` r; addero d l1l n r]
           (__  , __ , __ ) , [``>1o`` n; genAddero d n m r]
         ])
 
 and genAddero d n m r =
-    let a,b,c = fresh3()
-    let x,y,z = fresh3()
+    let a,b,c = fresh()
+    let x,y,z = fresh()
     let e = fresh()
     all [ (n, m, r) *=* (cons a x, cons b y, cons c z)
           poso y; poso z

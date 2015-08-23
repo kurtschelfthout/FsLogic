@@ -35,16 +35,16 @@ module Goal =
 
     type Term<'a> = { Uni : Uni } with
         static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = equivImpl u v
+
     
-    let fresh : unit -> Term<'a> = 
+    let private newVarTerm<'a> : unit -> Term<'a> = 
         let none = fun _ -> None
         fun () -> { Uni = Substitution.newVar() }
          
-    let inline fresh2() = fresh(),fresh()
-    let inline fresh3() = fresh(),fresh(),fresh()
+//    let inline fresh2() = fresh(),fresh()
+//    let inline fresh3() = fresh(),fresh(),fresh()
 
-    //shortcut to say "don't care"
-    let __<'a> : Term<'a> = fresh()
+    
 
     let private nilProj typex = 
         let emptyMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("get_Empty")
@@ -70,16 +70,16 @@ module Goal =
     let cons (x:Term<'a>) (xs:Term<'a list>) : Term<'a list> = 
         { Uni = Ctor (consProj typeof<'a>, 1, [x.Uni; xs.Uni]) }
        
-    let tupProj typea typeb =
-        let ctorMethod = typedefof<_ * _>.MakeGenericType([|typea;typeb|]).GetConstructor([|typea;typeb|])
-        let create x y = ctorMethod.Invoke([|x;y|])
+    let private tupProj (typedef:Type) types =
+        let ctorMethod = typedef.MakeGenericType(types).GetConstructor(types)
+        let create xs = ctorMethod.Invoke(xs)
         fun uni ->
             let projunis = uni |> List.map tryProject
             match projunis with
-            | [Some a;Some b] -> Some (create a b)
-            | _ -> None
-    let tup (x:Term<'a>,y:Term<'b>) : Term<'a*'b> =
-        { Uni = Ctor (tupProj typeof<'a> typeof<'b>, 2, [x.Uni;y.Uni])}   
+            | xs when xs |> List.forall Option.isSome -> 
+                xs |> Seq.map Option.get |> Seq.toArray |> create |> Some
+            | _ -> 
+                None
 
     let ofList xs = List.foldBack (fun e st -> cons e st) xs nil
 
@@ -101,8 +101,24 @@ module Goal =
         static member Create(b:bool) = prim b
         static member Create(b:int) = prim b
         static member Create(b:string) = prim b
+        static member Create(xs:list<int>) = xs |> List.map prim |> ofList
+        static member Create(xs:list<bool>) = xs |> List.map prim |> ofList
         static member Create(xs:list<Term<'a>>) = ofList xs
-        static member Create((a:Term<'a>,b:Term<'b>)) = tup (a,b)
+        static member Create((a:Term<'a>,b:Term<'b>)) = 
+            { Uni = Ctor (tupProj typedefof<_ * _> [|typeof<'a>;typeof<'b>|], 2, [a.Uni;b.Uni])}
+        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>)) = 
+            { Uni = Ctor (tupProj typedefof<_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>|], 3, [a.Uni;b.Uni;c.Uni])}
+        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>,d:Term<'d>)) = 
+            { Uni = Ctor (tupProj typedefof<_*_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>;typeof<'d>|], 4, [a.Uni;b.Uni;c.Uni;d.Uni])}
+
+        static member Fresh(_:Term<'a>) = 
+            newVarTerm<'a>()
+        static member Fresh((_:Term<'a>,_:Term<'b>)) = 
+            (newVarTerm<'a>(),newVarTerm<'b>())
+        static member Fresh((_:Term<'a>,_:Term<'b>,_:Term<'c>)) = 
+            (newVarTerm<'a>(),newVarTerm<'b>(),newVarTerm<'c>())
+        static member Fresh((_:Term<'a>,_:Term<'b>,_:Term<'c>,_:Term<'d>)) = 
+            (newVarTerm<'a>(),newVarTerm<'b>(),newVarTerm<'c>(),newVarTerm<'d>())
 
     let inline (~~) i : Term<'r> =
         let inline call (t:^t) (a:^a) (r:^b) =
@@ -115,6 +131,16 @@ module Goal =
         call Unifiable u v
 
     let inline ( *=* ) a b : Goal =  equiv a b
+
+    let inline fresh() : 'r =  
+        let inline call (t:^t) (a:^a) =
+             ((^t or ^a):(static member Fresh: ^a -> ^a)(a))
+        call Unifiable Unchecked.defaultof<'r>
+//    let inline fresh2() = fresh(),fresh()
+//    let inline fresh3() = fresh(),fresh(),fresh()
+
+    //shortcut to say "don't care"
+    let __<'a> : Term<'a> = fresh()
 
     let all (Goals goals) : Goal =
         let g = goals |> List.head
