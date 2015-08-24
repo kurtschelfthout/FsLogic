@@ -136,8 +136,6 @@ module Goal =
         let inline call (t:^t) (a:^a) =
              ((^t or ^a):(static member Fresh: ^a -> ^a)(a))
         call Unifiable Unchecked.defaultof<'r>
-//    let inline fresh2() = fresh(),fresh()
-//    let inline fresh3() = fresh(),fresh(),fresh()
 
     //shortcut to say "don't care"
     let __<'a> : Term<'a> = fresh()
@@ -185,36 +183,16 @@ module Goal =
     let inline recurse fg =
         Goal <| fun a -> Stream.delay (fun () -> let (Goal g) = fg() in g a)
 
-    let rec fix f x = fun a -> Stream.delay (fun () -> (f (fix f) x a))
-
-    let rec take n f =
-        if n = 0 then 
-            []
-        else
-            match f with
-            | MZero -> []
-            | Inc (Lazy s) -> take n s
-            | Unit a -> [a]
-            | Choice(a,f) ->  a :: take (n-1) f
-
-//    let rec takeSeq f =
-//        seq { match f with
-//              | MZero -> ()
-//              | Inc (Lazy s) -> yield! takeSeq s
-//              | Unit a -> yield a
-//              | Choice(a,f) ->  yield a; yield! takeSeq f
-//            }
-
     let run n (f: Term<'a> -> Goal) =
         Stream.delay (fun () -> 
             let x = fresh()
             let result = Goal.Subst (f x) Map.empty
             result >>= (reify x.Uni >> Stream.unit))
-        |> take n
-        |> List.map tryProject
-        |> List.map (Option.map (fun a -> unbox<'a> a))
-//        |> (if n>0 then Seq.take n else (fun x -> x))
-//        |> Seq.toList
+        |> Stream.toSeq
+        |> (if n>0 then Seq.take n else (fun x -> x))
+        |> Seq.map tryProject
+        |> Seq.map (Option.map unbox<'a>)
+        |> Seq.toList
 
     //impure operators
     let project ({ Uni = v } as tv:Term<'a>) (f:'a -> Goal) : Goal =

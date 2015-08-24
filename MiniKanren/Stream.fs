@@ -49,6 +49,15 @@ module Stream =
 
     let stream = StreamBuilder()
 
+    let rec toSeq f =
+        seq { match f with
+              | MZero -> ()
+              | Inc (Lazy s) -> yield! toSeq s
+              | Unit a -> yield a
+              | Choice(a,f) ->  yield a; yield! toSeq f
+            }
+
+
 type Stream<'a> with
     static member (>>=)(m,f) = Stream.bind m f
     static member (+++)(m1,m2) = Stream.mplus m1 m2
