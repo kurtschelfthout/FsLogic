@@ -1,4 +1,4 @@
-# FsLogic: MiniKanren for F\#
+# FsLogic: A port of MiniKanren
 
 MiniKanren is a logic programming language embedded in Scheme, originally. The most popular port is probably [Clojure's core.logic](https://github.com/clojure/core.logic). 
 
@@ -9,7 +9,7 @@ and understand, perhaps in favor of doing optimizations like convert everything 
 hopefully it will remain fast enough to be used for real applications.
 
 The main difference with original MiniKanren is that because F\# is typed, the embedded logic programming language is also typed. For example, it isn't statically possible to unify
-a list with an int (whhich would not unify at runtime anyway).
+a ``list<int>`` with an ``int`` or even a ``list<bool>`` (whhich would not unify at runtime anyway).
 
 In time I'd like to take some of the extensions on board, like alpha-kanren and I'm especially interested in cKanren.
 
