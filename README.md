@@ -1,4 +1,4 @@
-# MiniKanren for F#
+# MiniKanren for FSharp
 
 MiniKanren is a logic programming language embedded in Scheme, originally. It was, I believe, mainly popularized 
 by David Nolen's port to Clojure, now core.logic. You can learn much more about it at http://minikanren.org.
