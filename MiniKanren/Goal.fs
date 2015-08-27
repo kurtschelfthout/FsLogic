@@ -140,38 +140,40 @@ module Goal =
 // so it seem altogether not desirable.
 
     let conde (goals:#seq<list<Goal>>) : Goal =
+        let ife a = function
+            | [] -> Stream.mzero
+            | (Goal g)::(Goals gs) -> Stream.bindMany (g a) gs
+
         Goal <| fun a -> 
             Stream.delay (fun () -> 
-                (Stream.mplusMany (goals |> Seq.map (fun ((Goal g)::(Goals gs)) -> 
-                    Stream.bindMany (g a) gs) |> Seq.toList)))
+                (Stream.mplusMany (goals |> Seq.map (ife a) |> Seq.toList)))
 
-    ///To be used with matche;
-    /// matche (a,b,c)
+    ///To be used with matche:
+    /// matche (a,b,c) [ pattern ->> [ goals ]; ... ]
     let inline (->>) pat body = (pat,body)
 
-    ///not really matche: just calls equiv with the first argument 
+    ///Use kind of like pattern match: just calls equiv with the first argument 
     ///on all the heads of a given list; joining them in a conde.
     let inline matche pat (goals:(_ * Goal list) list) = 
         goals
         |> List.map (fun (h,l) -> (pat *=* h) :: l)
         |> conde
 
-
     let conda (goals:list<list<Goal>>) : Goal = 
         let rec ifa subst = function
-            | [] | [[]] -> Stream.mzero
-            | ((Goal g0)::(Goals g))::gs ->
+            | [] | []::_ -> Stream.mzero
+            | ((Goal g)::(Goals gs)) :: gss ->
                 let rec loop = function
-                    | MZero -> ifa subst gs
+                    | MZero -> ifa subst gss
                     | Inc f -> loop f.Value
                     | Unit _  
-                    | Choice (_,_) as a -> Stream.bindMany a g
-                loop (g0 subst)
+                    | Choice (_,_) as a -> Stream.bindMany a gs
+                loop (g subst)
         Goal <| fun subst -> ifa subst goals
 
     let condu (goals:list<list<Goal>>) : Goal = 
         let rec ifu subst = function
-            | [] | [[]] -> Stream.mzero
+            | [] | []::_ -> Stream.mzero
             | ((Goal g0)::(Goals g))::gs ->
                 let rec loop = function
                     | MZero -> ifu subst gs
