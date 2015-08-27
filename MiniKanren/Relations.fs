@@ -48,9 +48,9 @@ module Relations =
 
     ///Relates l,s and out so that l @ s = out
     let rec appendo l s out = 
-        emptyo l &&& equiv s out
-        ||| let a,d = fresh(),fresh() in
-            conso a d l
-            &&& let res = fresh() in
-                conso a res out
-                &&& recurse (fun () -> appendo d s res)
+        let a,d,res = fresh()
+        matche l
+            [ nil       ->> [ s *=* out ]
+              cons a d  ->> [ conso a res out
+                              recurse (fun () -> appendo d s res) ]
+            ]

@@ -114,7 +114,7 @@ module Goal =
              ((^t or ^a):(static member Unify: ^a * ^a -> Goal)(a,b))
         call Unifiable u v
 
-    let inline ( *=* ) a b : Goal =  equiv a b
+    let inline ( *=* ) a b =  equiv a b
 
     let inline fresh() : 'r =  
         let inline call (t:^t) (a:^a) =
@@ -129,16 +129,33 @@ module Goal =
         let gs = goals |> List.tail
         Goal <| fun a -> Stream.delay (fun () -> (Stream.bindMany (g a) gs))
 
-//TODO to make conde better:
+//You would think the following type would make conde better:
 //    type Clause<'a> = Clause of 'a * list<'a>
 //
 //    let inline (<==) head rest = Clause (head, rest)
+//
+// and this is indeed nice for clauses with a head and a body:
+//    conde [ head ==> [ body ]; head2 ==> [ body2 ] ]
+// but what about lone facts? Then that needs some extra syntax.
+// so it seem altogether not desirable.
 
     let conde (goals:#seq<list<Goal>>) : Goal =
         Goal <| fun a -> 
             Stream.delay (fun () -> 
                 (Stream.mplusMany (goals |> Seq.map (fun ((Goal g)::(Goals gs)) -> 
                     Stream.bindMany (g a) gs) |> Seq.toList)))
+
+    ///To be used with matche;
+    /// matche (a,b,c)
+    let inline (->>) pat body = (pat,body)
+
+    ///not really matche: just calls equiv with the first argument 
+    ///on all the heads of a given list; joining them in a conde.
+    let inline matche pat (goals:(_ * Goal list) list) = 
+        goals
+        |> List.map (fun (h,l) -> (pat *=* h) :: l)
+        |> conde
+
 
     let conda (goals:list<list<Goal>>) : Goal = 
         let rec ifa subst = function
