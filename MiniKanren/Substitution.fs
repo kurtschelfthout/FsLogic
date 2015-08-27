@@ -10,14 +10,13 @@ open System.Threading
 ///would introduce a circularity. This is
 ///an expensive check so is turned off by
 ///default.
-let mutable occursCheck = true
+let mutable occursCheck = false
 
-type [<Measure>] id
-type VarId = int<id>
+type VarId = int
 
 let nextId = 
     let varcount = ref 0
-    fun () -> Interlocked.Increment(varcount) * 1<id> : VarId
+    fun () -> Interlocked.Increment(varcount) : VarId
 
 [<CustomEquality; NoComparison>]
 type Uni = 
@@ -92,15 +91,14 @@ let rec walkMany v s =
     | Ctor (f,i,exprs) -> exprs |> List.map (fun e -> walkMany e s) |> (fun es -> Ctor(f,i,es))
     | _ -> v
 
-//Renumber all remaining variables in an expression with names in increasing order.
-let rec reifyS v s =
-    let v = walk v s
-    match v with
-    | LVar v' -> extNoCheck (s.Count * 1<id>) v s
-    | Ctor (_,i,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
-    | _ -> s
-
 let reify v s =
+    //Renumber all remaining variables in an expression with names in increasing order.
+    let rec reifyS v s =
+        let v = walk v s
+        match v with
+        | LVar v' -> extNoCheck s.Count v s
+        | Ctor (_,i,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
+        | _ -> s
     let v = walkMany v s
     walkMany v (reifyS v Map.empty)
 

@@ -2,14 +2,12 @@ namespace MiniKanren
 
 module Goal =
 
-    open MiniKanren.Substitution
-    open MiniKanren
+    open Substitution
     open System
-    open Microsoft.FSharp.Quotations
     open System.Reflection
 
-    ///A goal is a function that maps a substitution to an
-    ///ordered sequence of zero or more values.
+    /// A goal is a function that maps a substitution to an
+    /// ordered sequence of zero or more values.
     type Goal = Goal of (Subst -> Stream<Subst>) with 
         static member Subst(Goal g) = g
         static member (&&&)(Goal g1,Goal g2) =
@@ -22,11 +20,6 @@ module Goal =
     let fail = Goal (fun _ -> Stream.mzero)
     let succeed = Goal Stream.unit 
 
-    //this is in two parts because the public operator *=* needs
-    //to take Expr<'a> for type inference. But really it can take
-    //any Expr, not just the one with a generic type, and this is used
-    //further down.
-
     let private equivImpl u v : Goal =
         Goal <| fun a -> 
             unify u v a
@@ -35,17 +28,9 @@ module Goal =
 
     type Term<'a> = { Uni : Uni } with
         static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = equivImpl u v
-
     
-    let private newVarTerm<'a> : unit -> Term<'a> = 
-        let none = fun _ -> None
-        fun () -> { Uni = Substitution.newVar() }
+    let private newVarTerm<'a>() : Term<'a> = { Uni = Substitution.newVar() }
          
-//    let inline fresh2() = fresh(),fresh()
-//    let inline fresh3() = fresh(),fresh(),fresh()
-
-    
-
     let private nilProj typex = 
         let emptyMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("get_Empty")
         let nil = Some <| emptyMethod.Invoke(null, [||])
@@ -84,7 +69,6 @@ module Goal =
     let ofList xs = List.foldBack (fun e st -> cons e st) xs nil
 
     let prim (i:'a) : Term<'a> = { Uni = Prim i }
-//    let inline (~~) i  = prim i
 
     type Unifiable = Unifiable with
         static member inline Unify(a:Term<_>, a') =
