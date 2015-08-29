@@ -6,7 +6,60 @@ module Goal =
     open System
     open System.Reflection
 
-    type Term<'a> = { Uni : Term } 
+    /// A goal is a function that maps a constraint package to an
+    /// stream of packages.
+    type Goal = Goal of (Package -> Stream<Package>) with 
+        static member Subst(Goal g) = g
+        static member (&&&)(Goal g1, Goal g2) =
+            Goal (g1 >=> g2)
+        static member (|||)(Goal g1, Goal g2) =
+            Goal (fun s -> g1 s +++ g2 s)
+
+    let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
+
+    let fail = Goal (fun _ -> Stream.mzero)
+    let succeed = Goal Stream.unit 
+
+    let private unifyImpl u v : Goal =
+        let unifyExtAll c =
+            let lhs l = List.map (fst >> Var) l
+            let rhs l = List.map snd l
+            unifySubExprs (lhs c) (rhs c)
+
+        // Simplify the disequality constraints by unifying their left and right hand sides
+        // in the given substitution.
+        let rec verifyConstraints store accNewStore subst =
+            match store with
+            | [] -> Some accNewStore
+            | c::cs ->
+                match unifyExtAll c subst with
+                //if a constraint doesn't unify in the current substitution, so it can never be equal. It can thus be removed.
+                | None -> verifyConstraints cs accNewStore subst
+                //a constraint unifies without extending the substitution. In other words the constraint is violated.
+                | Some (_,[]) -> None
+                //a constraint unifies with extending the substitution. The extension is a simplified constraint that we must track,
+                //so we add it to the constraint store.
+                | Some (s',ext) -> verifyConstraints cs (ext::accNewStore) subst
+
+        Goal <| fun p -> 
+            match unify u v p.Substitution with
+            | None -> Stream.mzero
+            | Some s when obj.ReferenceEquals(p.Substitution,s) -> Stream.unit p
+            | Some s ->
+                match verifyConstraints p.ConstraintStore [] s with
+                | Some c -> Stream.unit { Substitution = s; ConstraintStore = c}
+                | None -> Stream.mzero
+            
+    let private disunifyImpl u v : Goal =
+        Goal <| fun p ->
+            match unifyExt u v p.Substitution with
+            | None -> Stream.unit p
+            | Some (_,[]) -> Stream.mzero
+            | Some (s,ext) -> Stream.unit { p with ConstraintStore = ext :: p.ConstraintStore}
+    
+    type Term<'a> = { Uni : Term } with
+        static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = unifyImpl u v
+        static member ( *<>* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = disunifyImpl u v
     
     let private newVarTerm<'a>() : Term<'a> = { Uni = Substitution.newVar() }
          
@@ -50,64 +103,7 @@ module Goal =
 
     let prim (i:'a) : Term<'a> = { Uni = Atom i }
 
-    /// A goal is a function that maps a substitution to an
-    /// ordered sequence of zero or more values.
-    type Goal = Goal of (Package -> Stream<Package>) with 
-        static member Subst(Goal g) = g
-        static member (&&&)(Goal g1,Goal g2) =
-            Goal (g1 >=> g2)
-        static member (|||)(Goal g1,Goal g2) =
-            Goal <| fun s -> g1 s +++ g2 s
-
-    let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
-
-    let fail = Goal (fun _ -> Stream.mzero)
-    let succeed = Goal Stream.unit 
-
     
-
-    let private unifyImpl u v : Goal =
-        let unifyExtAll c =
-            let lhs l = List.map (fst >> Var) l
-            let rhs l = List.map snd l
-            unifySubExprs (lhs c) (rhs c)
-
-        // Simplify the disequality constraints by unifying their left and right hand sides
-        // in the given substitution.
-        let rec verifyConstraints store accNewStore subst =
-            match store with
-            | [] -> Some accNewStore
-            | c::cs ->
-                match unifyExtAll c subst with
-                //if a constraint doesn't unify in the current substitution, so it can never be equal. It can thus be removed.
-                | None -> verifyConstraints cs accNewStore subst
-                //a constraint unifies without extending the substitution. In other words the constraint is violated.
-                | Some (_,[]) -> None
-                //a constraint unifies with extending the substitution. The extension is a simplified constraint that we must track,
-                //so we add it to the constraint store.
-                | Some (s',ext) -> verifyConstraints cs (ext::accNewStore) subst
-
-        Goal <| fun p -> 
-            match unify u v p.Substitution with
-            | None -> Stream.mzero
-            | Some s when obj.ReferenceEquals(p.Substitution,s) -> Stream.unit p
-            | Some s ->
-                match verifyConstraints p.ConstraintStore [] s with
-                | Some c -> Stream.unit { Substitution = s; ConstraintStore = c}
-                | None -> Stream.mzero
-            
-
-    let private disunifyImpl u v : Goal =
-        Goal <| fun p ->
-            match unifyExt u v p.Substitution with
-            | None -> Stream.unit p
-            | Some (_,[]) -> Stream.mzero
-            | Some (s,ext) -> Stream.unit { p with ConstraintStore = ext :: p.ConstraintStore}
-
-    
-    type Term<'a> with
-        static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = unifyImpl u v
-        static member ( *!* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = disunifyImpl u v
 
     type Unifiable = Unifiable with
         static member inline Unify(a:Term<_>, a') =

@@ -58,15 +58,15 @@ let ``should unify list of vars (2)``() =
 let ``disequality constraint``() =
     let res = run -1 (fun q -> 
         all [ q *=* 5Z
-              q *!* 5Z ])
+              q *<>* 5Z ])
     res.Length =! 0
-
+    
 [<Fact>]
 let ``disequality constraint 2``() =
     let res = run -1 (fun q -> 
         let x = fresh()
         all [ q *=* x
-              q *!* 6Z ])
+              q *<>* 6Z ])
     res.Length =! 1
 
 [<Fact>]
