@@ -1,4 +1,4 @@
-﻿module ArithmeticTest
+﻿module MiniKanren.Test.ArithmeticTest
 
 open Xunit
 open Swensen.Unquote
@@ -26,7 +26,7 @@ let ``and``() =
     let res = run -1 (fun q ->
         let x,y,r = fresh()
         bitAndo x y r
-        &&& equiv q ~~(x, y, r)
+        &&& q *=* ~~(x, y, r)
     )
     res =! ([0,0,0
              1,1,1

@@ -31,10 +31,10 @@ module Relations =
     //---lists----
 
     ///Relates l with the empty lst.
-    let emptyo l = equiv l nil
+    let emptyo l = l *=* nil
 
     ///Relates h and t with the list l such that (h::t) = l.
-    let conso h t l = equiv (cons h t) l
+    let conso h t l = cons h t *=* l
 
     ///Relates h with the list l such that (h::_) = l.
     let heado h l =

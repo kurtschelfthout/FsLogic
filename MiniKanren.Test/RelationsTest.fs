@@ -1,5 +1,5 @@
 ﻿
-module RelationsTest
+module MiniKanren.Test.RelationsTest
 
 open MiniKanren
 open MiniKanren.Goal
@@ -8,28 +8,34 @@ open MiniKanren.Relations
 open Xunit
 open Swensen.Unquote
 
-//let toUni (l:Term<'a> list) = l |> List.map (fun x -> x.Uni)
-
 [<Fact>]
-let g0() = 
-    let goal q = 
-        let x = fresh() 
-        x *=* 3Z &&& q *=* x
-    let res = run -1 goal
-    res =! [ Some 3 ]
-
-[<Fact>]
-let g1() = 
+let ``should unify with int``() = 
     let res = run -1 (fun q ->  q *=* 1Z)
     res =! [ Some 1 ]
 
 [<Fact>]
-let g2() = 
+let ``should unify with var unified with int``() = 
+    let goal q = 
+        let x = fresh() 
+        x *=* 1Z &&& q *=* x
+    let res = run -1 goal
+    res =! [ Some 1 ]
+
+[<Fact>]
+let ``should unify with var unified with int 2``() = 
+    let res = 
+        run -1 (fun q -> 
+            let y = fresh()
+            y *=* q &&& 3Z *=* y)
+    res =! [ Some 3 ]
+
+[<Fact>]
+let ``should unify list of vars``() = 
     let res = 
         run -1 (fun q -> 
             let (x,y,z) = fresh()
-            equiv q (ofList [x; y; z; x])
-            ||| equiv q (ofList [z; y; x; z]))
+            q *=* ofList [x; y; z; x]
+            ||| q *=* ofList [z; y; x; z])
     2 =! res.Length
     res =! [ None; None]
     //numbering restarts with each value
@@ -37,15 +43,7 @@ let g2() =
     //sprintf "%A" [ expected; expected ] =! sprintf "%A" res
 
 [<Fact>]
-let g3() = 
-    let res = 
-        run -1 (fun q -> 
-            let y = fresh()
-            equiv y q &&& equiv 3Z y)
-    res =! [ Some 3 ]
-
-[<Fact>]
-let g4() = 
+let ``should unify list of vars (2)``() = 
     let res = 
         run -1 (fun q -> 
             let x,y,z = fresh()
@@ -55,6 +53,21 @@ let g4() =
 //    let expected0 = <@ let _0,_1 =fresh(),fresh() in [ _0;_1 ] @> |> getResult
 //    let expected1 = <@ let _0 =fresh() in [ _0;_0 ] @> |> getResult
 //    sprintf "%A" [ expected0; expected1 ] =! sprintf "%A" res
+
+[<Fact>]
+let ``disequality constraint``() =
+    let res = run -1 (fun q -> 
+        all [ q *=* 5Z
+              q *!* 5Z ])
+    res.Length =! 0
+
+[<Fact>]
+let ``disequality constraint 2``() =
+    let res = run -1 (fun q -> 
+        let x = fresh()
+        all [ q *=* x
+              q *!* 6Z ])
+    res.Length =! 1
 
 [<Fact>]
 let infinite() = 

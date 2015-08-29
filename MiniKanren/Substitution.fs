@@ -12,94 +12,158 @@ open System.Threading
 ///default.
 let mutable occursCheck = false
 
+///The id of variables.
 type VarId = int
 
-let nextId = 
+let private nextId = 
     let varcount = ref 0
     fun () -> Interlocked.Increment(varcount) : VarId
 
+/// The universal type that holds untyped, tagged representations
+/// of all our terms. A term can be either:
+/// - a variable Var
+/// - a constructor Ctor: this represents structured terms that can be unified structurally
+///   with other terms with the same tag.
+/// - an atom Atom: this is an unstructured term that can be unified if their values are equal as
+///   determined by F#'s (=) operator.
 [<CustomEquality; NoComparison>]
-type Uni = 
-    | LVar of VarId
-    | Ctor of (list<Uni> -> obj option) * int * list<Uni>
-    | Prim of obj with
+type Term = 
+    | Var of VarId
+    | Ctor of (list<Term> -> obj option) * tag:int * list<Term>
+    | Atom of obj with
+    ///Equals defined just to make testing easier.
     override t.Equals(other) =
         match other with
-        | :? Uni as other ->
+        | :? Term as other ->
             match (t,other) with
-            | (LVar i, LVar j) -> i = j
+            | (Var i, Var j) -> i = j
             | (Ctor (_, p1, i1), Ctor (_, p2,i2)) -> p1 = p2 && i1 = i2
-            | (Prim o1, Prim o2) -> o1 = o2
+            | (Atom o1, Atom o2) -> o1 = o2
             | _ -> false
         | _ -> false
 
+/// Create an untyped new variable.
+let newVar() = Var <| nextId()
 
-let newVar() = LVar <| nextId()
+/// A substitution associates a variable with a term which may again be a variable.
+/// This way of representing substitutions is called a triangular substitution.
+type Subst = Map<VarId,Term>
 
-type Subst = Map<VarId,Uni>
-
+/// Extend a substitution with a new var -> term mapping without checking for
+/// circularities. A circularity can occur for example by associated var a -> var b,
+/// then associated var b -> var a. This will cause walk, below, to diverge.
 let extNoCheck : _ -> _ -> Subst -> Subst = Map.add
 
-let (|Find|_|) map key = Map.tryFind key map
+/// Repeatedly lookup the term v in the subsitution until it's no longer a variable,
+/// or it can't be found, and return the result.
+/// In other words, if we imagine the substitution as representing a 
+/// set of trees, where each mapping var -> term brings us closer to the root of a tree,
+/// then this method finds the root of the tree v is a part of.
+let rec walk term (s:Subst) =
+    match term with
+    | Var (Find s rhs) -> walk rhs s
+    | _ -> term
 
-let rec walk v (s:Subst) =
-    match v with
-    | LVar (Find s rhs) -> walk rhs s
-    | _ -> v
-
-///Returns true if adding an association between x and v
-///would introduce a circularity.
-///A circularity would in the first instance cause walk to diverge
-///(loop infinitely)
-let rec occurs id v s =
-    let vs = walk v s
+/// Returns true if adding an association between x and v
+/// would introduce a circularity.
+/// A circularity would in the first instance cause walk to diverge
+/// (loop infinitely).
+/// This is commonly called the occurs check.
+let rec occurs (varId:VarId) term s =
+    let vs = walk term s
     match vs with
-    | LVar id' -> id'.Equals(id)
-    | Ctor (_,_,fields) -> Seq.exists (fun exp -> occurs id exp s) fields
-    | Prim _ -> false
+    | Var id' -> id'.Equals(varId)
+    | Ctor (_,_,fields) -> Seq.exists (fun exp -> occurs varId exp s) fields
+    | Atom _ -> false
 
-///Calls extNoCheck only if the occurs call succeeds.
-let ext x v s =
-    if occursCheck && occurs x v s then 
+/// Calls extNoCheck only if the occurs call returns false.
+/// If the global variable 'occursCheck' is false, just skips
+/// the occursCheck and so is equivalent to extNoCheck.
+let ext varId term s =
+    if occursCheck && occurs varId term s then 
         None
     else 
-        Some <| extNoCheck x v s
+        Some <| extNoCheck varId term s
 
-///Unifies two terms u and v with respect to the substitution s, returning
-///Some s', a potentially extended substitution if unification succeeds, and None if
-///unification fails or would introduce a circularity.
+/// This represents the constraint that all variable, term pairs can not be simultaneously unifiable.
+/// In other words, the constraint holds iff the list contains at least one pair that is not
+/// unifiable.
+type DisequalityConstraint = list<VarId * Term> //maybe Subst?
+
+/// A list of constraints.
+type ConstraintStore = list<DisequalityConstraint> 
+
+/// We package substitutions and constraints in one datatype to easily pass it around.
+type Package = { Substitution: Subst
+                 ConstraintStore: ConstraintStore } with
+    static member Empty = { Substitution=Map.empty; ConstraintStore = []}
+
+/// Unifies two terms u and v with respect to the substitution s. Returns
+/// Some s': a potentially extended substitution s' if unification succeeds.
+/// None: if unification fails or would introduce a circularity (the latter is only checked
+///       if the occurs check is enabled.)
 let rec unify u v s = 
     let unifySubExprs exprs1 exprs2 =
+        let merge subst (e1,e2) = 
+            subst 
+            |> Option.bind (unify e1 e2)
         Seq.zip exprs1 exprs2
-        |> Seq.fold (fun subst (e1,e2) -> subst |> Option.bind (unify e1 e2)) (Some s)
-    let u = walk u s //remember: if u/v is an LVar it will return what it's associated with
-    let v = walk v s //otherwise, it will just return  u/v itself
+        |> Seq.fold merge (Some s)
+    let u = walk u s //remember: if u/v is a variable it will return what it's associated with;
+    let v = walk v s //otherwise, it will just return u or v itself.
     match (u,v) with
-    | LVar u, LVar v when u = v -> Some s
-    | LVar u, LVar _ -> Some (extNoCheck u v s) //distinct, unassociated vars never introduce a circularity. Hence extNoCheck.
-    | LVar u, _ -> ext u v s
-    | _, LVar v -> ext v u s
-    | Prim u, Prim v when u = v -> Some s
+    | Var u, Var v when u = v -> Some s
+    | Var u, Var _ -> Some (extNoCheck u v s) //distinct, unassociated vars never introduce a circularity, hence extNoCheck.
+    | Var u, _ -> ext u v s
+    | _, Var v -> ext v u s
+    | Atom u, Atom v when u = v -> Some s
     | Ctor (_,i,ufields), Ctor (_,j,vfields) when i = j ->  unifySubExprs ufields vfields
     | _ -> None
 
-///Like walk, but also replaces any variables that are bound in the substitution deep
-///in the given v.
-let rec walkMany v s =
-    let v = walk v s
+let rec internal unifySubExprs exprs1 exprs2 s =
+        let merge subst (e1,e2) = 
+            subst 
+            |> Option.bind (fun (subst,ext) -> unifyExt e1 e2 subst |> Option.map (fun (s,e) -> (s, e @ ext)))
+        Seq.zip exprs1 exprs2
+        |> Seq.fold merge (Some (s,[]))
+
+/// Unifies two terms u and v with respect to the substitution s, and keeps track of what it extends
+/// the substitution with, for use in disunify. Returning
+/// Some (s',l): a potentially extended substitution s' if unification succeeds, l containing 
+///              a list of pairs with which it was extended. The latter is for consumption by disunify.
+/// None: if unification fails or would introduce a circularity (the latter is only checked
+///       if the occurs check is enabled.)
+and unifyExt u v s = 
+    let u = walk u s //remember: if u/v is a variable it will return what it's associated with;
+    let v = walk v s //otherwise, it will just return u or v itself.
+    match (u,v) with
+    | Var u, Var v when u = v -> Some (s,[])
+    | Var u, Var _ -> Some ((extNoCheck u v s), [u,v]) //distinct, unassociated vars never introduce a circularity, hence extNoCheck.
+    | Var u, _ -> ext u v s |> Option.map (fun s -> s,[u,v])
+    | _, Var v -> ext v u s |> Option.map (fun s -> s,[v,u])
+    | Atom u, Atom v when u = v -> Some (s,[])
+    | Ctor (_,i,ufields), Ctor (_,j,vfields) when i = j ->  unifySubExprs ufields vfields s
+    | _ -> None
+
+/// Substitutes the term and its subterms with what they are associated with in the substitution,
+/// in other words looks inside Ctor, recursively.
+let rec walkMany term s =
+    let v = walk term s
     match v with
     | Ctor (f,i,exprs) -> exprs |> List.map (fun e -> walkMany e s) |> (fun es -> Ctor(f,i,es))
     | _ -> v
 
-let reify v s =
+/// Reify the term given the substitution. This means, remove variables as much as possible,
+/// and clean up those that remain by re-numbering them in increasing order. 
+let reify term s =
     //Renumber all remaining variables in an expression with names in increasing order.
     let rec reifyS v s =
         let v = walk v s
         match v with
-        | LVar v' -> extNoCheck s.Count v s
+        | Var v' -> extNoCheck s.Count v s
         | Ctor (_,i,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
         | _ -> s
-    let v = walkMany v s
+    let v = walkMany term s
     walkMany v (reifyS v Map.empty)
 
 

@@ -6,28 +6,7 @@ module Goal =
     open System
     open System.Reflection
 
-    /// A goal is a function that maps a substitution to an
-    /// ordered sequence of zero or more values.
-    type Goal = Goal of (Subst -> Stream<Subst>) with 
-        static member Subst(Goal g) = g
-        static member (&&&)(Goal g1,Goal g2) =
-            Goal (g1 >=> g2)
-        static member (|||)(Goal g1,Goal g2) =
-            Goal <| fun s -> g1 s +++ g2 s
-
-    let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
-
-    let fail = Goal (fun _ -> Stream.mzero)
-    let succeed = Goal Stream.unit 
-
-    let private equivImpl u v : Goal =
-        Goal <| fun a -> 
-            unify u v a
-            |> Option.map Stream.unit
-            |> Option.defaultTo Stream.mzero
-
-    type Term<'a> = { Uni : Uni } with
-        static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = equivImpl u v
+    type Term<'a> = { Uni : Term } 
     
     let private newVarTerm<'a>() : Term<'a> = { Uni = Substitution.newVar() }
          
@@ -35,13 +14,14 @@ module Goal =
         let emptyMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("get_Empty")
         let nil = Some <| emptyMethod.Invoke(null, [||])
         fun _ -> nil
+
     [<GeneralizableValue>]
     let nil<'a> : Term<'a list> = { Uni = Ctor (nilProj typeof<'a>,0,[]) }
 
     let private tryProject = function
-        | (LVar _) -> None
+        | (Var _) -> None
         | (Ctor (p,_,args)) -> p args
-        | Prim o -> Some o
+        | Atom o -> Some o
 
     let private consProj typex = 
         let consMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("Cons")
@@ -68,7 +48,66 @@ module Goal =
 
     let ofList xs = List.foldBack (fun e st -> cons e st) xs nil
 
-    let prim (i:'a) : Term<'a> = { Uni = Prim i }
+    let prim (i:'a) : Term<'a> = { Uni = Atom i }
+
+    /// A goal is a function that maps a substitution to an
+    /// ordered sequence of zero or more values.
+    type Goal = Goal of (Package -> Stream<Package>) with 
+        static member Subst(Goal g) = g
+        static member (&&&)(Goal g1,Goal g2) =
+            Goal (g1 >=> g2)
+        static member (|||)(Goal g1,Goal g2) =
+            Goal <| fun s -> g1 s +++ g2 s
+
+    let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
+
+    let fail = Goal (fun _ -> Stream.mzero)
+    let succeed = Goal Stream.unit 
+
+    
+
+    let private unifyImpl u v : Goal =
+        let unifyExtAll c =
+            let lhs l = List.map (fst >> Var) l
+            let rhs l = List.map snd l
+            unifySubExprs (lhs c) (rhs c)
+
+        // Simplify the disequality constraints by unifying their left and right hand sides
+        // in the given substitution.
+        let rec verifyConstraints store accNewStore subst =
+            match store with
+            | [] -> Some accNewStore
+            | c::cs ->
+                match unifyExtAll c subst with
+                //if a constraint doesn't unify in the current substitution, so it can never be equal. It can thus be removed.
+                | None -> verifyConstraints cs accNewStore subst
+                //a constraint unifies without extending the substitution. In other words the constraint is violated.
+                | Some (_,[]) -> None
+                //a constraint unifies with extending the substitution. The extension is a simplified constraint that we must track,
+                //so we add it to the constraint store.
+                | Some (s',ext) -> verifyConstraints cs (ext::accNewStore) subst
+
+        Goal <| fun p -> 
+            match unify u v p.Substitution with
+            | None -> Stream.mzero
+            | Some s when obj.ReferenceEquals(p.Substitution,s) -> Stream.unit p
+            | Some s ->
+                match verifyConstraints p.ConstraintStore [] s with
+                | Some c -> Stream.unit { Substitution = s; ConstraintStore = c}
+                | None -> Stream.mzero
+            
+
+    let private disunifyImpl u v : Goal =
+        Goal <| fun p ->
+            match unifyExt u v p.Substitution with
+            | None -> Stream.unit p
+            | Some (_,[]) -> Stream.mzero
+            | Some (s,ext) -> Stream.unit { p with ConstraintStore = ext :: p.ConstraintStore}
+
+    
+    type Term<'a> with
+        static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = unifyImpl u v
+        static member ( *!* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = disunifyImpl u v
 
     type Unifiable = Unifiable with
         static member inline Unify(a:Term<_>, a') =
@@ -109,12 +148,10 @@ module Goal =
              ((^t or ^a):(static member Create: ^a -> ^b)(a))
         call Unifiable i Unchecked.defaultof<Term<'r>>
 
-    let inline equiv u v =
+    let inline ( *=* ) u v = 
         let inline call (t:^t) (a:^a) (b:^a) =
              ((^t or ^a):(static member Unify: ^a * ^a -> Goal)(a,b))
         call Unifiable u v
-
-    let inline ( *=* ) a b =  equiv a b
 
     let inline fresh() : 'r =  
         let inline call (t:^t) (a:^a) =
@@ -189,8 +226,8 @@ module Goal =
     let run n (f: Term<'a> -> Goal) =
         Stream.delay (fun () -> 
             let x = fresh()
-            let result = Goal.Subst (f x) Map.empty
-            result >>= (reify x.Uni >> Stream.unit))
+            let result = Goal.Subst (f x) Package.Empty
+            result >>= (fun r -> r.Substitution |> reify x.Uni |> Stream.unit))
         |> Stream.toSeq
         |> (if n>0 then Seq.take n else (fun x -> x))
         |> Seq.map tryProject
@@ -199,20 +236,20 @@ module Goal =
 
     //impure operators
     let project ({ Uni = v } as tv:Term<'a>) (f:'a -> Goal) : Goal =
-        Goal <| fun s -> 
+        Goal <| fun p -> 
             //assume atom here..otherwise fail...
-            match walkMany v s |> tryProject with
-            | Some x -> Goal.Subst (f (unbox x)) s
+            match walkMany v p.Substitution |> tryProject with
+            | Some x -> Goal.Subst (f (unbox x)) p
             | None -> failwithf "project: value is not of type %s" typeof<'a>.Name
 
     let copyTerm u v : Goal =
         let rec buildSubst s u : Subst =
             match u with
-            | LVar (Find s _) -> s
-            | LVar u -> Map.add u (newVar()) s
+            | Var (Find s _) -> s
+            | Var u -> Map.add u (newVar()) s
             | Ctor (_, _, exprs) -> List.fold buildSubst s exprs
             | _ -> s
-        Goal <| fun s ->
-            let u = walkMany u s
-            Goal.Subst (equivImpl (walkMany u (buildSubst Map.empty u)) v) s
+        Goal <| fun p ->
+            let u = walkMany u p.Substitution
+            Goal.Subst (unifyImpl (walkMany u (buildSubst Map.empty u)) v) p
     
