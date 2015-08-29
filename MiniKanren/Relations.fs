@@ -46,11 +46,21 @@ module Relations =
         let h = fresh()
         conso h t l
 
-    ///Relates l,s and out so that l @ s = out
+    ///Relates l,s and out so that l @ s = out.
     let rec appendo l s out = 
         let a,d,res = fresh()
         matche l
             [ nil       ->> [ s *=* out ]
               cons a d  ->> [ conso a res out
                               recurse (fun () -> appendo d s res) ]
+            ]
+
+    /// Relates x,l and out such that out is l with 
+    /// the first occurence of x in l removed.
+    let rec removeo x l out =
+        let a,d,res = fresh()
+        matche l
+            [ nil       ->> [ l *=* out ]
+              cons a d  ->> [ (a *=* x &&& d *=* out)
+                              ||| (a *<>* x &&& conso a res out &&& recurse (fun () -> removeo x d res))]
             ]

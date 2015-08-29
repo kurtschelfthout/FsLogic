@@ -178,6 +178,17 @@ let ``appendo finds correct number of prefix and postfix combinations``() =
             ] |> List.map Some)
 
 [<Fact>]
+let ``removeo removes first occurence of elements from list``() =
+    let res = run -1 (fun q -> removeo 2Z ~~[1;2;3;4] q)        
+    res =! [ Some [1;3;4] ]     
+
+[<Fact>]
+let ``removeo removes element from singleton list``() =
+    let res = run -1 (fun q -> removeo 2Z ~~[2] q)        
+    res =! [ Some [] ]     
+
+
+[<Fact>]
 let projectTest() = 
     let res = run -1 (fun q -> 
         let x = fresh()
