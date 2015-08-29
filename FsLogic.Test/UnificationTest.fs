@@ -1,8 +1,8 @@
-﻿module MiniKanren.Test.UnificationTest
+﻿module FsLogic.Test.UnificationTest
 
 open Xunit
 open Swensen.Unquote
-open MiniKanren.Substitution
+open FsLogic.Substitution
 open Microsoft.FSharp.Quotations
 
 #nowarn "25"

@@ -1,4 +1,4 @@
-﻿module MiniKanren.Substitution
+﻿module FsLogic.Substitution
 
 open System
 open System.Collections

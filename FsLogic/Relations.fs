@@ -1,4 +1,4 @@
-﻿namespace MiniKanren
+﻿namespace FsLogic
 
 module NumericLiteralZ =
     open System

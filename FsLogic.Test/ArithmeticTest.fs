@@ -1,11 +1,11 @@
-﻿module MiniKanren.Test.ArithmeticTest
+﻿module FsLogic.Test.ArithmeticTest
 
 open Xunit
 open Swensen.Unquote
-open MiniKanren.Substitution
-open MiniKanren
-open MiniKanren.Goal
-open MiniKanren.Arithmetic
+open FsLogic.Substitution
+open FsLogic
+open FsLogic.Goal
+open FsLogic.Arithmetic
 open Microsoft.FSharp.Quotations
 
 [<Fact>]

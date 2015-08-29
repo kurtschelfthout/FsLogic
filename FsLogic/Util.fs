@@ -1,4 +1,4 @@
-namespace MiniKanren
+namespace FsLogic
 
 module internal Option =
     let defaultTo a opt =

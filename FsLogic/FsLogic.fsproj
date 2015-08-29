@@ -6,10 +6,10 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>MiniKanren</RootNamespace>
-    <AssemblyName>MiniKanren</AssemblyName>
+    <RootNamespace>FsLogic</RootNamespace>
+    <AssemblyName>FsLogic</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
-    <Name>MiniKanren</Name>
+    <Name>FsLogic</Name>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -21,7 +21,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\MiniKanren.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\FsLogic.XML</DocumentationFile>
     <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -31,7 +31,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\MiniKanren.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\FsLogic.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

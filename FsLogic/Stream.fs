@@ -1,4 +1,4 @@
-﻿namespace MiniKanren
+﻿namespace FsLogic
 
 //a good explantion of the need for all these cases is in the uKanren paper.
 type Stream<'a> =

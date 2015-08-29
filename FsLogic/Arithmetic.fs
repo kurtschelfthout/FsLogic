@@ -1,4 +1,4 @@
-﻿module MiniKanren.Arithmetic
+﻿module FsLogic.Arithmetic
 
 open Substitution
 open Goal

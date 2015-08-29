@@ -1,10 +1,10 @@
 ﻿
-module MiniKanren.Test.RelationsTest
+module FsLogic.Test.RelationsTest
 
-open MiniKanren
-open MiniKanren.Goal
-open MiniKanren.Substitution
-open MiniKanren.Relations
+open FsLogic
+open FsLogic.Goal
+open FsLogic.Substitution
+open FsLogic.Relations
 open Xunit
 open Swensen.Unquote
 
