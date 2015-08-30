@@ -58,8 +58,8 @@ module Goal =
             | Some (s,ext) -> Stream.unit { p with ConstraintStore = ext :: p.ConstraintStore}
     
     type Term<'a> = { Uni : Term } with
-        static member ( *=* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = unifyImpl u v
-        static member ( *<>* )( { Uni = u }:Term<'a>, { Uni = v }:Term<'a>) = disunifyImpl u v
+        static member ( *=* ) ( { Uni = u }:Term<'a>, { Uni = v }: Term<'a>) = unifyImpl u v
+        static member ( *<>* )( { Uni = u }:Term<'a>, { Uni = v }: Term<'a>) = disunifyImpl u v
     
     let private newVarTerm<'a>() : Term<'a> = { Uni = Substitution.newVar() }
          
@@ -103,8 +103,6 @@ module Goal =
 
     let prim (i:'a) : Term<'a> = { Uni = Atom i }
 
-    
-
     type Unifiable = Unifiable with
         static member inline Unify(a:Term<_>, a') =
             a *=* a'
@@ -117,18 +115,23 @@ module Goal =
         //will not generalize the types. E.g. the below dummy one will do.
         //static member Unify(Unifiable, Unifiable) = succeed
 
-        static member Create(b:bool) = prim b
         static member Create(b:int) = prim b
+        static member Create(b:bool) = prim b
         static member Create(b:string) = prim b
+
         static member Create(xs:list<int>) = xs |> List.map prim |> ofList
         static member Create(xs:list<bool>) = xs |> List.map prim |> ofList
+        static member Create(xs:list<string>) = xs |> List.map prim |> ofList
         static member Create(xs:list<Term<'a>>) = ofList xs
+
         static member Create((a:Term<'a>,b:Term<'b>)) = 
             { Uni = Ctor (tupProj typedefof<_ * _> [|typeof<'a>;typeof<'b>|], 2, [a.Uni;b.Uni])}
         static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>)) = 
             { Uni = Ctor (tupProj typedefof<_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>|], 3, [a.Uni;b.Uni;c.Uni])}
         static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>,d:Term<'d>)) = 
             { Uni = Ctor (tupProj typedefof<_*_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>;typeof<'d>|], 4, [a.Uni;b.Uni;c.Uni;d.Uni])}
+        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>,d:Term<'d>,e:Term<'e>)) = 
+            { Uni = Ctor (tupProj typedefof<_*_*_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>;typeof<'d>;typeof<'e>|], 5, [a.Uni;b.Uni;c.Uni;d.Uni;e.Uni])}
 
         static member Fresh(_:Term<'a>) = 
             newVarTerm<'a>()
@@ -138,6 +141,8 @@ module Goal =
             (newVarTerm<'a>(),newVarTerm<'b>(),newVarTerm<'c>())
         static member Fresh((_:Term<'a>,_:Term<'b>,_:Term<'c>,_:Term<'d>)) = 
             (newVarTerm<'a>(),newVarTerm<'b>(),newVarTerm<'c>(),newVarTerm<'d>())
+        static member Fresh((_:Term<'a>,_:Term<'b>,_:Term<'c>,_:Term<'d>,_:Term<'e>)) = 
+            (newVarTerm<'a>(),newVarTerm<'b>(),newVarTerm<'c>(),newVarTerm<'d>(),newVarTerm<'e>())
 
     let inline (~~) i : Term<'r> =
         let inline call (t:^t) (a:^a) (r:^b) =
@@ -238,7 +243,7 @@ module Goal =
             | Some x -> Goal.Subst (f (unbox x)) p
             | None -> failwithf "project: value is not of type %s" typeof<'a>.Name
 
-    let copyTerm u v : Goal =
+    let copyTerm (u:Term<'a>) (v:Term<'a>) : Goal =
         let rec buildSubst s u : Subst =
             match u with
             | Var (Find s _) -> s
@@ -246,6 +251,6 @@ module Goal =
             | Ctor (_, _, exprs) -> List.fold buildSubst s exprs
             | _ -> s
         Goal <| fun p ->
-            let u = walkMany u p.Substitution
-            Goal.Subst (unifyImpl (walkMany u (buildSubst Map.empty u)) v) p
+            let u = walkMany u.Uni p.Substitution
+            Goal.Subst (unifyImpl (walkMany u (buildSubst Map.empty u)) v.Uni) p
     

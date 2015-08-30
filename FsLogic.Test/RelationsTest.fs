@@ -196,16 +196,17 @@ let projectTest() =
         &&& (project x (fun xv -> let prod = xv * xv in ~~prod *=* q)))
     [ Some 25 ] =! res
 
-//TODO
-//[<Fact>]
-//let copyTermTest() =
-//    let g = run -1 (fun q ->
-//        let (w,x,y,z) = fresh(),fresh(),fresh(),fresh()
-//        equiv <@ "a", %x, 5, %y, %x @> w
-//        &&& copyTerm w z
-//        &&& equiv <@ %w, %z @> q)
-//    let result = <@ let _0,_1,_2,_3 = obj(),obj(),obj(),obj() in ("a", _0, 5, _1, _0), ("a", _2, 5, _3, _2) @> |> getResult
-//    sprintf "%A" g =! sprintf "%A" [ result ]
+
+[<Fact>]
+let copyTermTest() =
+    let g = run -1 (fun q ->
+        let w,x,y,z = fresh()
+        ~~(~~"a", x, 5Z, y, x) *=* w
+        &&& copyTerm w z 
+        &&&  ~~(w, z) *=* q)
+    () //TODO
+    //let result = <@ let _0,_1,_2,_3 = obj(),obj(),obj(),obj() in ("a", _0, 5, _1, _0), ("a", _2, 5, _3, _2) @> |> getResult
+    //sprintf "%A" g =! sprintf "%A" [ result ]
 
 [<Fact>]
 let ``conda commits to the first clause if its head succeeds``() =

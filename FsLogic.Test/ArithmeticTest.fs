@@ -64,16 +64,16 @@ let halfAdder() =
     res.Length =! 4
     test <@ res |> List.forall (fun (Some (x,y,r,c)) -> x + y = r + 2*c) @>
 
-//TODO
-//[<Fact>]
-//let fullAdder() =
-//    let res = run -1 (fun q ->
-//        let (b,x,y,r),c = fresh(),fresh()
-//        fullAddero b x y r c
-//        &&& equiv q <@ %b, %x, %y, %r, %c @>
-//    )
-//    res.Length =! 8
-//    test <@ res |> List.forall (fun (b,x,y,r,c) -> b + x + y = r + 2*c) @>
+
+[<Fact>]
+let fullAdder() =
+    let res = run -1 (fun q ->
+        let b,x,y,r,c = fresh()
+        fullAddero b x y r c
+        &&& q *=* ~~(b, x, y, r, c)
+    )
+    res.Length =! 8
+    test <@ res |> List.forall (fun (Some (b,x,y,r,c)) -> b + x + y = r + 2*c) @>
 
 [<Fact>]    
 let ``0+1=1``() =
