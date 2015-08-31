@@ -57,7 +57,6 @@ module Stream =
               | Choice(a,f) ->  yield a; yield! toSeq f
             }
 
-
 type Stream<'a> with
     static member (>>=)(m,f) = Stream.bind m f
     static member (+++)(m1,m2) = Stream.mplus m1 m2

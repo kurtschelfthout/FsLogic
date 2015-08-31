@@ -10,7 +10,7 @@ open System.Threading
 ///would introduce a circularity. This is
 ///an expensive check so is turned off by
 ///default.
-let mutable occursCheck = false
+let mutable occursCheck = true
 
 ///The id of variables.
 type VarId = int
@@ -109,13 +109,13 @@ let rec unify u v s =
             |> Option.bind (unify e1 e2)
         Seq.zip exprs1 exprs2
         |> Seq.fold merge (Some s)
-    let u = walk u s //remember: if u/v is a variable it will return what it's associated with;
-    let v = walk v s //otherwise, it will just return u or v itself.
-    match (u,v) with
-    | Var u, Var v when u = v -> Some s
-    | Var u, Var _ -> Some (extNoCheck u v s) //distinct, unassociated vars never introduce a circularity, hence extNoCheck.
-    | Var u, _ -> ext u v s
-    | _, Var v -> ext v u s
+    let u' = walk u s //remember: if u/v is a variable it will return what it's associated with;
+    let v' = walk v s //otherwise, it will just return u or v itself.
+    match (u',v') with
+    | Var uId, Var vId when uId = vId -> Some s
+    | Var uId, Var _ -> Some (extNoCheck uId v' s) //distinct, unassociated vars never introduce a circularity, hence extNoCheck.
+    | Var uId, _ -> ext uId v' s
+    | _, Var vId -> ext vId u' s
     | Atom u, Atom v when u = v -> Some s
     | Ctor (_,i,ufields), Ctor (_,j,vfields) when i = j ->  unifySubExprs ufields vfields
     | _ -> None
@@ -160,12 +160,9 @@ let reify term s =
     let rec reifyS v s =
         let v = walk v s
         match v with
-        | Var v' -> extNoCheck s.Count v s
+        | Var v' -> extNoCheck -s.Count v s
         | Ctor (_,i,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
         | _ -> s
     let v = walkMany term s
     walkMany v (reifyS v Map.empty)
-
-
-
 
