@@ -131,6 +131,6 @@ let ``2+?=5``() =
     res =! [Some [1;1]]
 
 [<Fact>]
-let ``generate numbers addition``() =
+let ``?+?=?``() =
     let res = run 9  (fun q -> let x,y,z = fresh() in pluso x y z &&& ~~(x,y,z) *=* q)
     printf "%A" res
