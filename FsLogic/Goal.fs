@@ -224,13 +224,21 @@ module Goal =
     let inline recurse fg =
         Goal <| fun a -> Stream.delay (fun () -> let (Goal g) = fg() in g a)
 
-    let run n (f: Term<'a> -> Goal) =
+    let private runImpl n (f: Term<'a> -> Goal) =
         Stream.delay (fun () -> 
             let x = fresh()
             let result = Goal.Subst (f x) Package.Empty
             result >>= (fun r -> r.Substitution |> reify x.Uni |> Stream.unit))
         |> Stream.toSeq
-        |> (if n>0 then Seq.take n else (fun x -> x))
+        |> (if n>0 then Seq.take n else id)
+
+    let runRaw n (f: Term<'a> -> Goal) =
+        runImpl  n f
+        |> Seq.map (fun t -> { Uni = t } : Term<'a>)
+        |> Seq.toList
+
+    let run n (f: Term<'a> -> Goal) =
+        runImpl n f
         |> Seq.map tryProject
         |> Seq.map (Option.map unbox<'a>)
         |> Seq.toList
