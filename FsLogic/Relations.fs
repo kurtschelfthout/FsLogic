@@ -12,7 +12,6 @@ module NumericLiteralZ =
 
 module Relations =
 
-    open Substitution
     open Goal
 
     ///Tries goal an unbounded number of times.

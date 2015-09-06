@@ -1,8 +1,6 @@
 ﻿module FsLogic.Arithmetic
 
-open Substitution
 open Goal
-open Relations
 
 //let buildNumber n =
 //    let (|Even|_|) n = if n % 2 = 0 then Some n else None
@@ -50,7 +48,6 @@ let fullAddero b x y r c =
           bitXoro xy wz c ]
 
 let rec addero d n m r : Goal =
-    let p = prim
     let l1l = cons 1Z nil //[1]
     recurse (fun () -> 
     matche (d,n,m)

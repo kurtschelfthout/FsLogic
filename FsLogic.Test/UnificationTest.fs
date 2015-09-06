@@ -3,7 +3,6 @@
 open Xunit
 open Swensen.Unquote
 open FsLogic.Substitution
-open Microsoft.FSharp.Quotations
 
 #nowarn "25"
 

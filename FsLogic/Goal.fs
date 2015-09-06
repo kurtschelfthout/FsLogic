@@ -39,7 +39,7 @@ module Goal =
                 | Some (_,[]) -> None
                 //a constraint unifies with extending the substitution. The extension is a simplified constraint that we must track,
                 //so we add it to the constraint store.
-                | Some (s',ext) -> verifyConstraints cs (ext::accNewStore) subst
+                | Some (_,ext) -> verifyConstraints cs (ext::accNewStore) subst
 
         Goal <| fun p -> 
             match unify u v p.Substitution with
@@ -55,7 +55,7 @@ module Goal =
             match unifyExt u v p.Substitution with
             | None -> Stream.unit p
             | Some (_,[]) -> Stream.mzero
-            | Some (s,ext) -> Stream.unit { p with ConstraintStore = ext :: p.ConstraintStore}
+            | Some (_,ext) -> Stream.unit { p with ConstraintStore = ext :: p.ConstraintStore}
     
     type Term<'a> = { Uni : Term } with
         static member ( *=* ) ( { Uni = u }:Term<'a>, { Uni = v }: Term<'a>) = unifyImpl u v
@@ -145,17 +145,17 @@ module Goal =
             (newVarTerm<'a>(),newVarTerm<'b>(),newVarTerm<'c>(),newVarTerm<'d>(),newVarTerm<'e>())
 
     let inline (~~) i : Term<'r> =
-        let inline call (t:^t) (a:^a) (r:^b) =
+        let inline call (_:^t) (a:^a) (_:^b) =
              ((^t or ^a):(static member Create: ^a -> ^b)(a))
         call Unifiable i Unchecked.defaultof<Term<'r>>
 
     let inline ( *=* ) u v = 
-        let inline call (t:^t) (a:^a) (b:^a) =
+        let inline call (_:^t) (a:^a) (b:^a) =
              ((^t or ^a):(static member Unify: ^a * ^a -> Goal)(a,b))
         call Unifiable u v
 
     let inline fresh() : 'r =  
-        let inline call (t:^t) (a:^a) =
+        let inline call (_:^t) (a:^a) =
              ((^t or ^a):(static member Fresh: ^a -> ^a)(a))
         call Unifiable Unchecked.defaultof<'r>
 
@@ -244,7 +244,7 @@ module Goal =
         |> Seq.toList
 
     //impure operators
-    let project ({ Uni = v } as tv:Term<'a>) (f:'a -> Goal) : Goal =
+    let project ({ Uni = v } : Term<'a>) (f:'a -> Goal) : Goal =
         Goal <| fun p -> 
             //assume atom here..otherwise fail...
             match walkMany v p.Substitution |> tryProject with

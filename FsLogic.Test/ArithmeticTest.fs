@@ -2,11 +2,11 @@
 
 open Xunit
 open Swensen.Unquote
-open FsLogic.Substitution
 open FsLogic
 open FsLogic.Goal
 open FsLogic.Arithmetic
-open Microsoft.FSharp.Quotations
+
+#nowarn "25"
 
 [<Fact>]
 let xor() =
@@ -36,22 +36,22 @@ let ``and``() =
 
 [<Fact>]
 let ``poso fails for 0``() =
-    let res = run -1 (fun q -> poso nil)
+    let res = run -1 (fun _ -> poso nil)
     res =! []    
     
 [<Fact>]
 let ``poso succeeds for 1``() =
-    let res = run -1 (fun q -> poso ~~[1Z])
+    let res = run -1 (fun _ -> poso ~~[1Z])
     res.Length =! 1
 
 [<Fact>]
 let ``>1o fails for 0 and 1``() =
-    let res = run -1 (fun q -> ``>1o`` nil ||| ``>1o`` ~~[1Z])
+    let res = run -1 (fun _ -> ``>1o`` nil ||| ``>1o`` ~~[1Z])
     res =! []    
     
 [<Fact>]
 let ``>1o succeeds for 2``() =
-    let res = run -1 (fun q -> ``>1o`` ~~[0Z;1Z])
+    let res = run -1 (fun _ -> ``>1o`` ~~[0Z;1Z])
     res.Length =! 1
 
 [<Fact>]

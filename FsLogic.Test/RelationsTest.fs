@@ -3,7 +3,6 @@ module FsLogic.Test.RelationsTest
 
 open FsLogic
 open FsLogic.Goal
-open FsLogic.Substitution
 open FsLogic.Relations
 open Xunit
 open Swensen.Unquote
@@ -46,7 +45,7 @@ let ``should unify list of vars``() =
 let ``should unify list of vars (2)``() = 
     let res = 
         run -1 (fun q -> 
-            let x,y,z = fresh()
+            let x,y = fresh()
             ofList [x; y] *=* q
             ||| ofList [y; y] *=* q)
     2 =! res.Length
@@ -236,5 +235,5 @@ let ``conde succeeds each goal at most once``() =
 
 [<Fact>]
 let ``onceo succeeds the goal at most once``() =
-    let res = run -1 (fun q -> onceo alwayso)
+    let res = run -1 (fun _ -> onceo alwayso)
     res.Length =! 1
