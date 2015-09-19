@@ -33,12 +33,12 @@ module Goal =
             | [] -> Some accNewStore
             | c::cs ->
                 match unifyExtAll c subst with
-                //if a constraint doesn't unify in the current substitution, so it can never be equal. It can thus be removed.
+                //a constraint doesn't unify in the current substitution, so it can never be equal. It can thus be removed.
                 | None -> verifyConstraints cs accNewStore subst
                 //a constraint unifies without extending the substitution. In other words the constraint is violated.
                 | Some (_,[]) -> None
-                //a constraint unifies with extending the substitution. The extension is a simplified constraint that we must track,
-                //so we add it to the constraint store.
+                //a constraint unifies with extending the substitution. The extension is a simplified constraint,
+                //so we replace the old constraint with the simplified one in the constraint store.
                 | Some (_,ext) -> verifyConstraints cs (ext::accNewStore) subst
 
         Goal <| fun p -> 
@@ -159,7 +159,7 @@ module Goal =
              ((^t or ^a):(static member Fresh: ^a -> ^a)(a))
         call Unifiable Unchecked.defaultof<'r>
 
-    //shortcut to say "don't care"
+    //Synonym to fresh, but to indicate "don't care"
     let __<'a> : Term<'a> = fresh()
 
     let all (Goals goals) : Goal =
