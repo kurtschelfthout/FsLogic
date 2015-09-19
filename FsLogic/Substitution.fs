@@ -12,11 +12,13 @@ module Substitution =
     let mutable occursCheck = true
 
     ///The id of variables.
-    type VarId = int
+    type internal VarId = int
 
-    let private nextId = 
+    let private nextVarId = 
         let varcount = ref 0
         fun () -> Interlocked.Increment(varcount) : VarId
+
+    type internal TagId = int
 
     /// The universal type that holds untyped, tagged representations
     /// of all our terms. A term can be either:
@@ -28,7 +30,7 @@ module Substitution =
     [<CustomEquality; NoComparison>]
     type Term = 
         | Var of VarId
-        | Ctor of (list<Term> -> obj option) * tag:int * list<Term>
+        | Ctor of (list<Term> -> obj option) * tag:TagId * list<Term>
         | Atom of obj with
         ///Equals defined just to make testing easier.
         override t.Equals(other) =
@@ -42,7 +44,7 @@ module Substitution =
             | _ -> false
 
     /// Create an untyped new variable.
-    let newVar() = Var <| nextId()
+    let newVar() = Var <| nextVarId()
 
     /// A substitution associates a variable with a term which may again be a variable.
     /// This way of representing substitutions is called a triangular substitution.
