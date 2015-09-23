@@ -76,28 +76,26 @@ module Goal =
         | (Ctor (p,_,args)) -> p args
         | Atom o -> Some o
 
-    let private consProj (typex:Type) = 
-        let consMethod = typex.GetMethod("Cons")
-        let cons x xs = consMethod.Invoke(null, [|x;xs|])
-        fun uni ->
-            match uni with 
-            | [x;xs] -> 
-                tryProject x
-                |> Option.bind (fun x -> tryProject xs |> Option.map (fun xs -> cons x xs))
-            | _ -> None
+    let private anyProj create uni =
+        let projunis = uni |> Seq.map tryProject |> Seq.cache
+        match projunis with
+        | xs when xs |> Seq.forall Option.isSome -> 
+            xs |> Seq.map Option.get |> Seq.toArray |> create |> Some
+        | _ -> 
+            None
+
     let cons (x:Term<'a>) (xs:Term<'a list>) : Term<'a list> = 
+        let consProj (typex:Type) = 
+            let ctorMethod = typex.GetMethod("Cons")
+            let create args = ctorMethod.Invoke(null, args)
+            anyProj create
+
         { Uni = Ctor (consProj typeof<'a list>, 1, [x.Uni; xs.Uni]) }
        
     let private tupProj (typex:Type) =
         let ctorMethod = typex.GetConstructor(typex.GetGenericArguments())
-        let create xs = ctorMethod.Invoke(xs)
-        fun uni ->
-            let projunis = uni |> List.map tryProject
-            match projunis with
-            | xs when xs |> List.forall Option.isSome -> 
-                xs |> Seq.map Option.get |> Seq.toArray |> create |> Some
-            | _ -> 
-                None
+        let create args = ctorMethod.Invoke(args)
+        anyProj create
 
     let ofList xs = List.foldBack (fun e st -> cons e st) xs nil
 
