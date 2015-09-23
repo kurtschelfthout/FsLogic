@@ -63,21 +63,21 @@ module Goal =
     
     let private newVarTerm<'a>() : Term<'a> = { Uni = Substitution.newVar() }
          
-    let private nilProj typex = 
-        let emptyMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("get_Empty")
+    let private nilProj (typex:Type) = 
+        let emptyMethod = typex.GetMethod("get_Empty")
         let nil = Some <| emptyMethod.Invoke(null, [||])
         fun _ -> nil
 
     [<GeneralizableValue>]
-    let nil<'a> : Term<'a list> = { Uni = Ctor (nilProj typeof<'a>,0,[]) }
+    let nil<'a> : Term<'a list> = { Uni = Ctor (nilProj typeof<'a list>,0,[]) }
 
     let private tryProject = function
         | (Var _) -> None
         | (Ctor (p,_,args)) -> p args
         | Atom o -> Some o
 
-    let private consProj typex = 
-        let consMethod = typedefof<_ list>.MakeGenericType([|typex|]).GetMethod("Cons")
+    let private consProj (typex:Type) = 
+        let consMethod = typex.GetMethod("Cons")
         let cons x xs = consMethod.Invoke(null, [|x;xs|])
         fun uni ->
             match uni with 
@@ -86,10 +86,10 @@ module Goal =
                 |> Option.bind (fun x -> tryProject xs |> Option.map (fun xs -> cons x xs))
             | _ -> None
     let cons (x:Term<'a>) (xs:Term<'a list>) : Term<'a list> = 
-        { Uni = Ctor (consProj typeof<'a>, 1, [x.Uni; xs.Uni]) }
+        { Uni = Ctor (consProj typeof<'a list>, 1, [x.Uni; xs.Uni]) }
        
-    let private tupProj (typedef:Type) types =
-        let ctorMethod = typedef.MakeGenericType(types).GetConstructor(types)
+    let private tupProj (typex:Type) =
+        let ctorMethod = typex.GetConstructor(typex.GetGenericArguments())
         let create xs = ctorMethod.Invoke(xs)
         fun uni ->
             let projunis = uni |> List.map tryProject
@@ -124,14 +124,14 @@ module Goal =
         static member Create(xs:list<string>) = xs |> List.map prim |> ofList
         static member Create(xs:list<Term<'a>>) = ofList xs
 
-        static member Create((a:Term<'a>,b:Term<'b>)) = 
-            { Uni = Ctor (tupProj typedefof<_ * _> [|typeof<'a>;typeof<'b>|], 2, [a.Uni;b.Uni])}
-        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>)) = 
-            { Uni = Ctor (tupProj typedefof<_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>|], 3, [a.Uni;b.Uni;c.Uni])}
-        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>,d:Term<'d>)) = 
-            { Uni = Ctor (tupProj typedefof<_*_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>;typeof<'d>|], 4, [a.Uni;b.Uni;c.Uni;d.Uni])}
-        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>,d:Term<'d>,e:Term<'e>)) = 
-            { Uni = Ctor (tupProj typedefof<_*_*_*_*_> [|typeof<'a>;typeof<'b>;typeof<'c>;typeof<'d>;typeof<'e>|], 5, [a.Uni;b.Uni;c.Uni;d.Uni;e.Uni])}
+        static member Create((a:Term<'a>,b:Term<'b>)) : Term<'a*'b> = 
+            { Uni = Ctor (tupProj typeof<'a*'b>, 2, [a.Uni;b.Uni])}
+        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>)) : Term<'a*'b*'c> = 
+            { Uni = Ctor (tupProj typeof<'a*'b*'c>, 3, [a.Uni;b.Uni;c.Uni])}
+        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>,d:Term<'d>)) : Term<'a*'b*'c*'d> = 
+            { Uni = Ctor (tupProj typeof<'a*'b*'c*'d>, 4, [a.Uni;b.Uni;c.Uni;d.Uni])}
+        static member Create((a:Term<'a>,b:Term<'b>,c:Term<'c>,d:Term<'d>,e:Term<'e>)) : Term<'a*'b*'c*'d*'e> = 
+            { Uni = Ctor (tupProj typeof<'a*'b*'c*'d*'e>, 5, [a.Uni;b.Uni;c.Uni;d.Uni;e.Uni])}
 
         static member Fresh(_:Term<'a>) = 
             newVarTerm<'a>()
