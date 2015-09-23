@@ -161,7 +161,7 @@ module Substitution =
         let rec reifyS v s =
             let v = walk v s
             match v with
-            | Var _ -> extNoCheck -s.Count v s
+            | Var i -> extNoCheck i (Var -s.Count) s
             | Ctor (_,_,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
             | _ -> s
         let v = walkMany term s
