@@ -61,34 +61,43 @@ module Goal =
         static member ( *=* ) ( { Uni = u }:Term<'a>, { Uni = v }: Term<'a>) = unifyImpl u v
         static member ( *<>* )( { Uni = u }:Term<'a>, { Uni = v }: Term<'a>) = disunifyImpl u v
     
+    
+    
+
     let private newVarTerm<'a>() : Term<'a> = { Uni = Substitution.newVar() }
          
     let private nilProj (typex:Type) = 
         let emptyMethod = typex.GetMethod("get_Empty")
-        let nil = Some <| emptyMethod.Invoke(null, [||])
+        let nil = Det <| emptyMethod.Invoke(null, [||])
         fun _ -> nil
 
     [<GeneralizableValue>]
-    let nil<'a> : Term<'a list> = { Uni = Ctor (nilProj typeof<'a list>,0,[]) }
+    let nil<'a> : Term<'a list> = { Uni = Ctor (nilProj typeof<'a list>, 0, []) }
 
     let private tryProject = function
-        | (Var _) -> None
+        | (Var i) -> Free i
         | (Ctor (p,_,args)) -> p args
-        | Atom o -> Some o
+        | Atom o -> Det o
 
     let private anyProj create uni =
         let projunis = uni |> Seq.map tryProject |> Seq.cache
         match projunis with
-        | xs when xs |> Seq.forall Option.isSome -> 
-            xs |> Seq.map Option.get |> Seq.toArray |> create |> Some
+        | xs when xs |> Seq.forall ReifiedTerm.IsDetermined -> 
+            xs |> Seq.map ReifiedTerm.GetDeterminedValue |> Seq.toArray |> create |> (fun v -> Det v)
         | _ -> 
-            None
+            Half (projunis |> Seq.toList)
 
     let cons (x:Term<'a>) (xs:Term<'a list>) : Term<'a list> = 
+        let rec flattenHalf rterm =
+            match rterm with
+            | Half [x;(Half xs)] -> Half (flattenHalf x :: List.map flattenHalf xs)
+            | Half [x;(Det v)] when v = box [] -> Half [(flattenHalf x)]
+            | _ -> rterm
+
         let consProj (typex:Type) = 
             let ctorMethod = typex.GetMethod("Cons")
             let create args = ctorMethod.Invoke(null, args)
-            anyProj create
+            anyProj create >> flattenHalf
 
         { Uni = Ctor (consProj typeof<'a list>, 1, [x.Uni; xs.Uni]) }
        
@@ -222,23 +231,14 @@ module Goal =
     let inline recurse fg =
         Goal <| fun a -> Stream.delay (fun () -> let (Goal g) = fg() in g a)
 
-    let private runImpl n (f: Term<'a> -> Goal) =
+    let run n (f: Term<'a> -> Goal) =
         Stream.delay (fun () -> 
             let x = fresh()
             let result = Goal.Subst (f x) Package.Empty
             result >>= (fun r -> r.Substitution |> reify x.Uni |> Stream.unit))
         |> Stream.toSeq
         |> (if n>0 then Seq.take n else id)
-
-    let runRaw n (f: Term<'a> -> Goal) =
-        runImpl  n f
-        |> Seq.map (fun t -> { Uni = t } : Term<'a>)
-        |> Seq.toList
-
-    let run n (f: Term<'a> -> Goal) =
-        runImpl n f
         |> Seq.map tryProject
-        |> Seq.map (Option.map unbox<'a>)
         |> Seq.toList
 
     //impure operators
@@ -246,8 +246,8 @@ module Goal =
         Goal <| fun p -> 
             //assume atom here..otherwise fail...
             match walkMany v p.Substitution |> tryProject with
-            | Some x -> Goal.Subst (f (unbox x)) p
-            | None -> failwithf "project: value is not of type %s" typeof<'a>.Name
+            | Det x -> Goal.Subst (f (unbox x)) p
+            | _ -> failwithf "project: value is not of type %s" typeof<'a>.Name
 
     let copyTerm (u:Term<'a>) (v:Term<'a>) : Goal =
         let rec buildSubst s u : Subst =

@@ -3,6 +3,7 @@
 open Xunit
 open Swensen.Unquote
 open FsLogic
+open FsLogic.Substitution
 open FsLogic.Goal
 open FsLogic.Arithmetic
 
@@ -19,7 +20,7 @@ let xor() =
             1,1,0
             1,0,1
             0,1,1
-            ]  |> List.map Some)
+            ]  |> List.map (box >> Det))
 
 [<Fact>]
 let ``and``() =
@@ -32,7 +33,7 @@ let ``and``() =
              1,1,1
              0,1,0
              1,0,0
-            ] |> List.map Some)
+            ] |> List.map (box >> Det))
 
 [<Fact>]
 let ``poso fails for 0``() =
@@ -54,6 +55,9 @@ let ``>1o succeeds for 2``() =
     let res = run -1 (fun _ -> ``>1o`` ~~[0Z;1Z])
     res.Length =! 1
 
+let (|Unbox|_|) (a:obj) : 'a option =
+    match a with | :? 'a as at -> Some at | _ -> None
+
 [<Fact>]
 let halfAdder() =
     let res = run -1 (fun q ->
@@ -62,7 +66,7 @@ let halfAdder() =
         &&& q *=* ~~(x, y, r, c)
     )
     res.Length =! 4
-    test <@ res |> List.forall (fun (Some (x,y,r,c)) -> x + y = r + 2*c) @>
+    test <@ res |> List.forall (fun (Det (Unbox (x,y,r,c))) -> x + y = r + 2*c) @>
 
 
 [<Fact>]
@@ -73,62 +77,62 @@ let fullAdder() =
         &&& q *=* ~~(b, x, y, r, c)
     )
     res.Length =! 8
-    test <@ res |> List.forall (fun (Some (b,x,y,r,c)) -> b + x + y = r + 2*c) @>
+    test <@ res |> List.forall (fun (Det (Unbox (b,x,y,r,c))) -> b + x + y = r + 2*c) @>
 
 [<Fact>]    
 let ``0+1=1``() =
     let res = run -1 (fun q -> pluso nil ~~[1] q)
-    res =! [Some [1]]
+    res =! [Det [1]]
 
 [<Fact>]    
 let ``1+0=1``() =
     let res = run -1 (fun q -> pluso ~~[1] nil q)
-    res =! [Some [1]]
+    res =! [Det [1]]
 
 [<Fact>]    
 let ``1+1=2``() =
     let res = run -1 (fun q -> pluso ~~[1] ~~[1] q)
-    res =! [Some [0;1]]
+    res =! [Det [0;1]]
 
 [<Fact>]    
 let ``1+2=3``() =
     let res = run -1 (fun q -> pluso ~~[1] ~~[0;1] q)
-    res =! [Some [1;1]]
+    res =! [Det [1;1]]
 
 [<Fact>]    
 let ``2+1=3``() =
     let res = run -1 (fun q -> pluso ~~[0;1] ~~[1] q)
-    res =! [Some [1;1]]
+    res =! [Det [1;1]]
 
 [<Fact>]    
 let ``2+2=4``() =
     let res = run -1 (fun q -> pluso ~~[0;1] ~~[0;1] q)
-    res =! [Some [0;0;1]]
+    res =! [Det [0;0;1]]
 
 [<Fact>]    
 let ``2+3=5``() =
     let res = run -1 (fun q -> pluso ~~[0;1] ~~[1;1] q)
-    res =! [Some [1;0;1]]
+    res =! [Det [1;0;1]]
 
 [<Fact>]    
 let ``3+2=5``() =
     let res = run -1 (fun q -> pluso ~~[1;1] ~~[0;1] q)
-    res =! [Some [1;0;1]]
+    res =! [Det [1;0;1]]
 
 [<Fact>]    
 let ``3+3=6``() =
     let res = run -1 (fun q -> pluso ~~[1;1] ~~[1;1] q)
-    res =! [Some [0;1;1]]
+    res =! [Det [0;1;1]]
 
 [<Fact>]    
 let ``3+6=9``() =
     let res = run -1 (fun q -> pluso ~~[1;1] ~~[0;1;1] q)
-    res =! [Some [1;0;0;1]]
+    res =! [Det [1;0;0;1]]
 
 [<Fact>]
 let ``2+?=5``() =
     let res = run -1 (fun q -> pluso ~~[0;1] q ~~[1;0;1])
-    res =! [Some [1;1]]
+    res =! [Det [1;1]]
 
 [<Fact>]
 let ``?+?=?``() =

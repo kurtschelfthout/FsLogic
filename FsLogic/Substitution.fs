@@ -3,6 +3,7 @@
 module Substitution = 
 
     open System.Threading
+    open System
 
     ///Set this to true to check after 
     ///unifying whether adding any new substitutions
@@ -20,6 +21,17 @@ module Substitution =
 
     type internal TagId = int
 
+    type ReifiedTerm =
+        | Free of int
+        | Det of obj
+        | Half of list<ReifiedTerm> with
+        static member IsDetermined rterm =
+            match rterm with Det _ -> true | _ -> false
+        static member GetDeterminedValue rterm =
+            match rterm with Det v -> v | _ -> failwithf "Reified term %A is not fully determined." rterm
+        static member ToOption rterm =
+            match rterm with Det v -> Some v | _ -> None
+
     /// The universal type that holds untyped, tagged representations
     /// of all our terms. A term can be either:
     /// - a variable Var
@@ -30,7 +42,7 @@ module Substitution =
     [<CustomEquality; NoComparison>]
     type Term = 
         | Var of VarId
-        | Ctor of (list<Term> -> obj option) * tag:TagId * list<Term>
+        | Ctor of (list<Term> -> ReifiedTerm) * tag:TagId * list<Term>
         | Atom of obj with
         ///Equals defined just to make testing easier.
         override t.Equals(other) =
@@ -161,8 +173,11 @@ module Substitution =
         let rec reifyS v s =
             let v = walk v s
             match v with
-            | Var i -> extNoCheck i (Var -s.Count) s
-            | Ctor (_,_,fields) -> fields |> List.fold (fun s field -> reifyS field s) s
+            | Var i -> 
+                //we use negative VarIds here, because positive ones may already be taken.
+                extNoCheck i (Var -s.Count) s 
+            | Ctor (_,_,fields) -> 
+                fields |> List.fold (fun s field -> reifyS field s) s
             | _ -> s
         let v = walkMany term s
         walkMany v (reifyS v Map.empty)

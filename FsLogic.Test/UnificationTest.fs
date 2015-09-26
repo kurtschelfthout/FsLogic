@@ -2,6 +2,7 @@
 
 open Xunit
 open Swensen.Unquote
+open FsLogic.Goal
 open FsLogic.Substitution
 
 #nowarn "25"
@@ -41,9 +42,8 @@ let ``unifying different values should fail``() =
 let ``unifying same values should succeed without extending substitution``() =
     unify zero zero Map.empty =! Some Map.empty
 
-let nil = Ctor ((fun _ -> None),0,[])
-let private consProj : Term list -> obj option = (fun _ -> None)
-let cons x xs = Ctor (consProj,1,[x;xs])
+let nil = nil<obj>.Uni
+let cons x xs = (cons { Uni = x } { Uni = xs }).Uni
 let list2 (x,y) = cons x (cons y nil)
 [<Fact>]
 let ``unifying head of list with variable should extend substitution``() =
