@@ -1,0 +1,6 @@
+source https://api.nuget.org/v3/index.json
+source https://www.nuget.org/api/v2/
+
+nuget FAKE
+nuget Fuchu
+nuget Unquote 3.0.0 framework: >= net46

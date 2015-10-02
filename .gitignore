@@ -221,3 +221,5 @@ pip-log.txt
 ###############
 
 *.userprefs
+.fake/
+.paket/

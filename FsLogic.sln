@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{7F9B4480-8C03-4101-BD3A-F0E80E8E23BC}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{88C3A508-BC60-4FA4-BE4F-CE0FE2E001B3}"
 	ProjectSection(SolutionItems) = preProject
-		.nuget\packages.config = .nuget\packages.config
+		paket.dependencies = paket.dependencies
 	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsLogic", "FsLogic\FsLogic.fsproj", "{44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F}"
