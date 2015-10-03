@@ -136,4 +136,3 @@ let ``2+?=5``() =
 let ``?+?=?``() =
     let res = run 9  (fun q -> let x,y,z = fresh() in pluso x y z &&& ~~(x,y,z) *=* q)
     () //TODO
-    //printf "%A" res

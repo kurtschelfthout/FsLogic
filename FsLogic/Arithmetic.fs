@@ -2,16 +2,22 @@
 
 open Goal
 
-//let buildNumber n =
-//    let (|Even|_|) n = if n % 2 = 0 then Some n else None
-//    let cons a b = a :: b
-//    let rec helper k n =
-//        match n with
-//        | 0 -> k []
-//        | Even n -> helper (fun k' -> k (cons 0)) (n/2)
-//        | _ -> helper (fun k' -> k (cons 1)) ((n-1)/2)
-//    let r = helper id n 
-//    r
+let ofNat n =
+    let (|Even|_|) n = if n % 2 = 0 then Some n else None
+    let rec helper k n =
+        match n with
+        | 0 -> k nil
+        | Even n -> helper (fun k' -> k (cons 0Z k')) (n/2)
+        | _ -> helper (fun k' -> k (cons 1Z k')) ((n-1)/2)
+    let r = helper id n 
+    r
+
+let toNat l =
+    let rec helper acc count l =
+        match l with
+        | [] -> acc
+        | x::xs -> helper (acc + (x <<< count)) (count+1) xs
+    helper 0 0 l
 
 let poso n = 
     n *=* cons __ __
