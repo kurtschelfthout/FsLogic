@@ -12,25 +12,35 @@ let description = """
     A library for logic programming in F#.
     """
 let tags = "fsharp logic-programming relational-programming"
-let testAssemblies = "tests/**/bin/Release/*Test*.dll"
+let testAssembly = "FsLogic.Test.exe"
 let gitOwner = "kurtschelfthout"
 let gitHome = "https://github.com/" + gitOwner
 let gitName = "FsLogic"
 let gitRaw = environVarOrDefault "gitRaw" ("https://raw.githubusercontent.com/" + gitOwner)
-let netFrameworks = ["v4.6"]
 let buildDir = "bin"
 
-Target "Build"( fun _ ->
-    netFrameworks
-    |> List.iter( fun framework ->
-        let outputPath = buildDir </> framework
+Target "Build" (fun _ ->
         !! (project + ".sln")
-        |> MSBuild outputPath "Build" ["Configuration","Release"; "TargetFrameworkVersion", framework]
-        |> Log (".NET " + framework + " Build-Output: "))
+        |> MSBuild buildDir "Build" ["Configuration","Release"]
+        |> Log (" Build-Output: ")
+)
+
+Target "Test" (fun _ ->
+  let errorCode =
+      buildDir </> testAssembly
+  //Log " " <| Seq.singleton errorCode
+      |> (fun p -> if not isMono then p,null else "mono",p)
+      |> (fun (p,a) -> asyncShellExec { defaultParams with Program = p; CommandLine = a })
+      |> Async.RunSynchronously
+  if errorCode <> 0 then failwith "Error in tests"
 )
 
 Target "Clean"( fun _ ->
     CleanDirs [buildDir]
 )
 
-RunTargetOrDefault "Build"
+"Clean"
+==> "Build"
+==> "Test"
+
+RunTargetOrDefault "Test"
