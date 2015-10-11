@@ -4,7 +4,6 @@ module Goal =
 
     open Substitution
     open System
-    open System.Reflection
 
     /// A goal is a function that maps a constraint package to an
     /// stream of packages.
@@ -17,7 +16,10 @@ module Goal =
 
     let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
 
+    ///A Goal that fails.
     let fail = Goal (fun _ -> Stream.mzero)
+
+    ///A Goal that succeeds once.
     let succeed = Goal Stream.unit 
 
     let private unifyImpl u v : Goal =
@@ -61,9 +63,6 @@ module Goal =
         static member ( *=* ) ( { Uni = u }:Term<'a>, { Uni = v }: Term<'a>) = unifyImpl u v
         static member ( *<>* )( { Uni = u }:Term<'a>, { Uni = v }: Term<'a>) = disunifyImpl u v
     
-    
-    
-
     let private newVarTerm<'a>() : Term<'a> = { Uni = Substitution.newVar() }
          
     let private nilProj (typex:Type) = 
@@ -180,7 +179,7 @@ module Goal =
 //    let inline (<==) head rest = Clause (head, rest)
 //
 // and this is indeed nice for clauses with a head and a body:
-//    conde [ head ==> [ body ]; head2 ==> [ body2 ] ]
+//    conde [ head <== [ body ]; head2 <== [ body2 ] ]
 // but what about lone facts? Then that needs some extra syntax.
 // so it seem altogether not desirable.
 
@@ -244,7 +243,7 @@ module Goal =
     //impure operators
     let project ({ Uni = v } : Term<'a>) (f:'a -> Goal) : Goal =
         Goal <| fun p -> 
-            //assume atom here..otherwise fail...
+            //Assume we are projecting a fully determined value here. Otherwise fail.
             match walkMany v p.Substitution |> tryProject with
             | Det x -> Goal.Subst (f (unbox x)) p
             | _ -> failwithf "project: value is not of type %s" typeof<'a>.Name
