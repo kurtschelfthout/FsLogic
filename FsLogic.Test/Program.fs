@@ -2,6 +2,7 @@
 
 open Fuchu
 open System
+open System.Diagnostics
 
 let markers = [
     typeof<UnificationTest.Marker>
@@ -23,5 +24,5 @@ let tests =
 [<EntryPoint>]
 let main args =
     let r = defaultMainThisAssembly args
-    //Console.ReadKey() |> ignore
+    if Debugger.IsAttached then Console.ReadKey() |> ignore
     r
