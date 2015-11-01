@@ -14,7 +14,7 @@ module Goal =
         static member (|||)(Goal g1, Goal g2) =
             Goal (fun s -> g1 s +++ g2 s)
 
-    let (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
+    let private (|Goals|) (g:list<_>) = g |> List.map Goal.Subst
 
     ///A Goal that fails.
     let fail = Goal (fun _ -> Stream.mzero)
