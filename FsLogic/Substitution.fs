@@ -98,7 +98,7 @@ module Substitution =
         else 
             Some <| extNoCheck varId term s
 
-    /// This represents the constraint that all variable, term pairs can not be simultaneously unifiable.
+    /// This represents the constraint that all (variable, term) pairs can not be simultaneously unifiable.
     /// In other words, the constraint holds iff the list contains at least one pair that is not
     /// unifiable.
     type DisequalityConstraint = list<VarId * Term> //maybe Subst?
