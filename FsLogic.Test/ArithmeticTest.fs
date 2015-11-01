@@ -132,7 +132,15 @@ let ``2+?=5``() =
     let res = run -1 (fun q -> pluso ~~[0;1] q ~~[1;0;1])
     res =! [Det [1;1]]
 
-
 let ``?+?=?``() =
-    let res = run 9  (fun q -> let x,y,z = fresh() in pluso x y z &&& ~~(x,y,z) *=* q)
-    () //TODO
+    let res = run 9 (fun q -> let x,y,z = fresh() in pluso x y z &&& ~~(x,y,z) *=* q)
+    res.[0] =! Half [Free -1; Det List.empty<int>; Free -1]
+    res.[1] =! Half [Det List.empty<int>; Half [Free -2; Free -3]; Half [Free -2; Free -3]]
+    res.[2] =! Det ([1], [1], [0; 1])
+    res.[3] =! Half [Half [Det 0; Free -2; Free -3]; Det [1]; Half [Det 1; Free -2; Free -3]]
+    res.[4] =! Half [Det [1]; Half [Det 0; Free -2; Free -3]; Half [Det 1; Free -2; Free -3]]
+    res.[5] =! Det ([1; 1], [1], [0; 0; 1])
+    res.[6] =! Det ([1], [1; 1], [0; 0; 1])
+    res.[7] =! Half [Half [Det 1; Det 0; Free -2; Free -3]; Det [1]; Half [Det 0; Det 1; Free -2; Free -3]]
+    res.[8] =! Half [Det [1]; Half [Det 1; Det 0; Free -2; Free -3]; Half [Det 0; Det 1; Free -2; Free -3]]
+

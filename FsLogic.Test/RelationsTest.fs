@@ -173,9 +173,9 @@ let copyTermTest() =
         ~~(~~"a", x, 5Z, y, x) *=* w
         &&& copyTerm w z
         &&&  ~~(w, z) *=* q)
-    () //TODO
-    //let result = <@ let _0,_1,_2,_3 = obj(),obj(),obj(),obj() in ("a", _0, 5, _1, _0), ("a", _2, 5, _3, _2) @> |> getResult
-    //sprintf "%A" g =! sprintf "%A" [ result ]
+    g =! [Half
+             [Half [Det "a"; Free -2; Det 5; Free -1; Free -2];
+              Half [Det "a"; Free -5; Det 5; Free -4; Free -5]]]
 
 let ``conda commits to the first clause if its head succeeds``() =
     let res = run -1 (fun q ->
