@@ -82,7 +82,7 @@ module Goal =
         let projunis = uni |> Seq.map tryProject |> Seq.cache
         match projunis with
         | xs when xs |> Seq.forall ReifiedTerm.IsDetermined -> 
-            xs |> Seq.map ReifiedTerm.GetDeterminedValue |> Seq.toArray |> create |> (fun v -> Det v)
+            xs |> Seq.map ReifiedTerm.GetDeterminedValue |> Seq.toArray |> create |> Det
         | _ -> 
             Half (projunis |> Seq.toList)
 
@@ -105,7 +105,7 @@ module Goal =
         let create args = ctorMethod.Invoke(args)
         anyProj create
 
-    let ofList xs = List.foldBack (fun e st -> cons e st) xs nil
+    let ofList xs = List.foldBack cons xs nil
 
     let prim (i:'a) : Term<'a> = { Uni = Atom i }
 
@@ -160,7 +160,7 @@ module Goal =
              ((^t or ^a):(static member Unify: ^a * ^a -> Goal)(a,b))
         call Unifiable u v
 
-    let inline fresh() : 'r =  
+    let inline fresh() : 'r =
         let inline call (_:^t) (a:^a) =
              ((^t or ^a):(static member Fresh: ^a -> ^a)(a))
         call Unifiable Unchecked.defaultof<'r>
@@ -210,8 +210,8 @@ module Goal =
                 let rec loop = function
                     | MZero -> ifa subst gss
                     | Inc f -> loop f.Value
-                    | Unit _  
-                    | Choice (_,_) as a -> Stream.bindMany a gs
+                    | Unit _
+                    | Choice _ as a -> Stream.bindMany a gs
                 loop (g subst)
         Goal <| fun subst -> ifa subst goals
 
