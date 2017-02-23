@@ -222,4 +222,4 @@ pip-log.txt
 
 *.userprefs
 .fake/
-.paket/
+.paket/paket.exe

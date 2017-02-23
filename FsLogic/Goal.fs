@@ -236,7 +236,7 @@ module Goal =
             let result = Goal.Subst (f x) Package.Empty
             result >>= (fun r -> r.Substitution |> reify x.Uni |> Stream.unit))
         |> Stream.toSeq
-        |> (if n>0 then Seq.take n else id)
+        |> if n>0 then Seq.take n else id
         |> Seq.map tryProject
         |> Seq.toList
 
