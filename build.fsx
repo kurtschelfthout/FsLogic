@@ -1,5 +1,6 @@
 #r @"packages/Fake/tools/Fakelib.dll"
 open Fake
+open Fake.Testing.Expecto
 
 // --------------------------------------------------------------------------
 // Project Configuration Information used in NuGet and AssemblyInfo Targets
@@ -26,13 +27,7 @@ Target "Build" (fun _ ->
 )
 
 Target "Test" (fun _ ->
-  let errorCode =
-      buildDir </> testAssembly
-  //Log " " <| Seq.singleton errorCode
-      |> (fun p -> if not isMono then p,null else "mono",p)
-      |> (fun (p,a) -> asyncShellExec { defaultParams with Program = p; CommandLine = a })
-      |> Async.RunSynchronously
-  if errorCode <> 0 then failwith "Error in tests"
+  Expecto id (Seq.singleton (buildDir </> testAssembly))
 )
 
 Target "Clean"( fun _ ->
