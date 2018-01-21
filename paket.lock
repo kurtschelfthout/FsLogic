@@ -10,7 +10,7 @@ NUGET
       FSharp.Core (>= 4.1.18)
       Mono.Cecil (>= 0.10.0-beta7)
       System.Diagnostics.FileVersionInfo (>= 4.3)
-    FAKE (4.64.4)
+    FAKE (5.0.0-beta010)
     Microsoft.NETCore.Platforms (2.0.1)
     Microsoft.NETCore.Targets (2.0)
     Mono.Cecil (0.10.0-beta7)

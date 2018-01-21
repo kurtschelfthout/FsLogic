@@ -1,5 +1,9 @@
+open Fake.Testing
+
 #r @"packages/Fake/tools/Fakelib.dll"
 open Fake
+open Fake.Core
+open Fake.Core.TargetOperators
 
 // --------------------------------------------------------------------------
 // Project Configuration Information used in NuGet and AssemblyInfo Targets
@@ -19,12 +23,12 @@ let gitName = "FsLogic"
 let gitRaw = environVarOrDefault "gitRaw" ("https://raw.githubusercontent.com/" + gitOwner)
 
 
-Target "Build" (fun _ ->
+Target.Create "Build" (fun p ->
     DotNetCli.Build (fun p -> { p with Configuration = "Release" })
 )
 
-Target "Test" (fun _ -> 
-    DotNetCli.RunCommand (fun p ->  { p with WorkingDir = testFolder }) "run"
+Target.Create "Test" (fun _ -> 
+    DotNetCli.RunCommand (fun p ->  { p with WorkingDir = testFolder }) "run --configuration Release"
 )
 
 //Target "Clean"( fun _ ->
@@ -34,4 +38,4 @@ Target "Test" (fun _ ->
 "Build"
 ==> "Test"
 
-RunTargetOrDefault "Test"
+Target.RunOrDefault "Test"
