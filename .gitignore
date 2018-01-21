@@ -223,3 +223,4 @@ pip-log.txt
 *.userprefs
 .fake/
 .paket/paket.exe
+paket-files/paket.restore.cached

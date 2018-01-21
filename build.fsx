@@ -1,6 +1,5 @@
 #r @"packages/Fake/tools/Fakelib.dll"
 open Fake
-open Fake.Testing.Expecto
 
 // --------------------------------------------------------------------------
 // Project Configuration Information used in NuGet and AssemblyInfo Targets
@@ -13,29 +12,26 @@ let description = """
     A library for logic programming in F#.
     """
 let tags = "fsharp logic-programming relational-programming"
-let testAssembly = "FsLogic.Test.exe"
+let testFolder = "FsLogic.Test"
 let gitOwner = "kurtschelfthout"
 let gitHome = "https://github.com/" + gitOwner
 let gitName = "FsLogic"
 let gitRaw = environVarOrDefault "gitRaw" ("https://raw.githubusercontent.com/" + gitOwner)
-let buildDir = "bin"
+
 
 Target "Build" (fun _ ->
-        !! (project + ".sln")
-        |> MSBuild buildDir "Build" ["Configuration","Release"]
-        |> Log (" Build-Output: ")
+    DotNetCli.Build (fun p -> { p with Configuration = "Release" })
 )
 
-Target "Test" (fun _ ->
-  Expecto id (Seq.singleton (buildDir </> testAssembly))
+Target "Test" (fun _ -> 
+    DotNetCli.RunCommand (fun p ->  { p with WorkingDir = testFolder }) "run"
 )
 
-Target "Clean"( fun _ ->
-    CleanDirs [buildDir]
-)
+//Target "Clean"( fun _ ->
+//    CleanDirs [buildDir]
+//)
 
-"Clean"
-==> "Build"
+"Build"
 ==> "Test"
 
 RunTargetOrDefault "Test"

@@ -1,20 +1,22 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{88C3A508-BC60-4FA4-BE4F-CE0FE2E001B3}"
 	ProjectSection(SolutionItems) = preProject
 		paket.dependencies = paket.dependencies
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsLogic", "FsLogic\FsLogic.fsproj", "{44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FsLogic", "FsLogic\FsLogic.fsproj", "{44BCCD75-9B6E-4A5C-9B88-E58F0D92C17F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsLogic.Test", "FsLogic.Test\FsLogic.Test.fsproj", "{A1242E49-AC9D-4EDA-BC09-C27BDE3B4BD8}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FsLogic.Test", "FsLogic.Test\FsLogic.Test.fsproj", "{A1242E49-AC9D-4EDA-BC09-C27BDE3B4BD8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CD3ECB7C-3E2F-4CF6-9409-41E58D2021E8}"
 	ProjectSection(SolutionItems) = preProject
+		build.cmd = build.cmd
 		build.fsx = build.fsx
+		build.sh = build.sh
 	EndProjectSection
 EndProject
 Global
@@ -34,6 +36,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5C20FC4C-624C-49FD-B3E7-B95149E303FD}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = MiniKanren\MiniKanren.fsproj
