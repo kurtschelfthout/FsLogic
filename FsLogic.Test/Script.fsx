@@ -1,6 +1,6 @@
-﻿#I @"bin\Debug"
+﻿#I @"bin\Debug\netcoreapp2.0"
 #r "FsLogic.dll"
-#r "Unquote.dll"
+//#r "Unquote.dll"
 open FsLogic
 open FsLogic.Goal
 open FsLogic.Substitution
@@ -13,7 +13,7 @@ let (Det l) = res.[0]
 
 l.GetType()
 
-r = Det []
+//r = Det []
 
 let s = Det []
 let l : obj = box []

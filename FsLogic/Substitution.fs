@@ -3,7 +3,6 @@
 module Substitution = 
 
     open System.Threading
-    open System
 
     ///Set this to true to check after 
     ///unifying whether adding any new substitutions
@@ -63,8 +62,8 @@ module Substitution =
     type Subst = Map<VarId,Term>
 
     /// Extend a substitution with a new var -> term mapping without checking for
-    /// circularities. A circularity can occur for example by associated var a -> var b,
-    /// then associated var b -> var a. This will cause walk, below, to diverge.
+    /// circularities. A circularity can occur for example by associating var a -> var b,
+    /// then associating var b -> var a. This will cause walk, below, to diverge.
     let extNoCheck : _ -> _ -> Subst -> Subst = Map.add
 
     /// Repeatedly lookup the term v in the subsitution until it's no longer a variable,
